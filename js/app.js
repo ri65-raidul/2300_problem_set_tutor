@@ -57,7 +57,7 @@ function renderChapters(){
     const el=document.createElement(locked?"div":"button");
     el.className="chapter"+(locked?" locked":"");
     el.innerHTML=`
-      <span class="num">CHAPTER ${c.number}</span>
+      <span class="num">TOPIC ${c.number}</span>
       <span class="ctitle">${c.title}</span>
       <span class="cdesc">${c.description}</span>
       <span class="count">${locked?'<span class="pill">Coming soon</span>':count+" problem"+(count===1?"":"s")+" →"}</span>`;
@@ -70,8 +70,8 @@ function renderChapters(){
 function buildProblems(n){
   state.chapterNumber=n;
   const c=chapterOf(n);
-  document.getElementById("crumb-chapter").textContent=`Chapter ${c.number}`;
-  document.getElementById("prob-eyebrow").textContent=`Chapter ${c.number}`;
+  document.getElementById("crumb-chapter").textContent=`Topic ${c.number}`;
+  document.getElementById("prob-eyebrow").textContent=`Topic ${c.number}`;
   document.getElementById("prob-title").textContent=c.title;
   document.getElementById("prob-desc").textContent=c.description;
   const host=document.getElementById("plist"); host.innerHTML="";
@@ -107,7 +107,7 @@ function currentProblem(){ return PROBLEMS.find(p=>p.id===state.problemId); }
 function buildSolver(id){
   state.problemId=id; state.pending=new Set(); state.groups=[];
   const p=currentProblem(); const c=chapterOf(p.chapter);
-  document.getElementById("crumb-back-chapter").textContent=`Chapter ${c.number}`;
+  document.getElementById("crumb-back-chapter").textContent=`Topic ${c.number}`;
   document.getElementById("crumb-back-chapter").onclick=()=>openChapter(p.chapter);
   document.getElementById("crumb-problem").textContent=p.title;
   document.getElementById("solve-title").textContent=p.title;

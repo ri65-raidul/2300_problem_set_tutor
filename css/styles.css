@@ -22,6 +22,12 @@
   }
   .wrap{max-width:1080px; margin:0 auto; padding:28px 22px 60px;}
 
+  /* Align digits in columns across all technical readouts */
+  .fn, .expr, .cell, .khead, .kside, .kcorner,
+  .chapter .num, .chapter .count, .pending-row .cnt,
+  .gitem .gterm, .gitem .gsize, .simtable,
+  .sw-progress, .sw-progress-inline, .figcap{font-variant-numeric:tabular-nums;}
+
   /* ---- top bar ---- */
   .topbar{display:flex; align-items:center; gap:12px; margin-bottom:30px;}
   .logo{display:flex; align-items:center; gap:11px; text-decoration:none; color:var(--ink);}
@@ -30,8 +36,8 @@
   .logo .tag{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); margin-top:2px;}
 
   .eyebrow{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--muted);}
-  h1.page{font-family:"Space Grotesk",sans-serif; font-weight:700; font-size:30px; letter-spacing:-0.02em; margin:6px 0 4px;}
-  .lede{color:var(--ink-soft); max-width:56ch; margin:0 0 26px;}
+  h1.page{font-family:"Space Grotesk",sans-serif; font-weight:700; font-size:clamp(38px,6vw,54px); line-height:1.03; letter-spacing:-0.03em; margin:10px 0 8px;}
+  .lede{color:var(--ink-soft); max-width:56ch; margin:0 0 26px; font-size:17px;}
 
   /* ---- views ---- */
   .view{display:none;}
@@ -40,13 +46,13 @@
   @media (prefers-reduced-motion:reduce){.view.active{animation:none;}}
 
   /* ---- chapter cards ---- */
-  .chapters{display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:14px; margin-top:8px;}
+  .chapters{display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:14px; margin-top:4px; padding-top:22px; border-top:1px solid var(--line);}
   .chapter{
     text-align:left; cursor:pointer; background:var(--surface); border:1px solid var(--line);
     border-radius:var(--radius); padding:18px 18px 16px; display:flex; flex-direction:column; gap:8px;
     font:inherit; color:inherit; transition:border-color .15s, transform .15s, box-shadow .15s;
   }
-  .chapter:hover{border-color:var(--ink); transform:translateY(-2px); box-shadow:0 6px 20px -12px rgba(20,24,31,.4);}
+  .chapter:hover{border-color:var(--ink); transform:translateY(-2px);}
   .chapter:focus-visible{outline:2px solid var(--focus); outline-offset:2px;}
   .chapter .num{font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:0.12em; color:var(--muted);}
   .chapter .ctitle{font-family:"Space Grotesk",sans-serif; font-weight:600; font-size:18px; letter-spacing:-0.01em;}
@@ -64,7 +70,7 @@
   .crumbs .here{color:var(--ink);}
 
   /* ---- problem list ---- */
-  .plist{display:flex; flex-direction:column; gap:10px;}
+  .plist{display:flex; flex-direction:column; gap:10px; padding-top:22px; border-top:1px solid var(--line);}
   .prow{
     display:flex; align-items:center; gap:16px; background:var(--surface); border:1px solid var(--line);
     border-radius:var(--radius); padding:15px 18px; cursor:pointer; font:inherit; color:inherit; text-align:left;
@@ -72,20 +78,24 @@
   }
   .prow:hover{border-color:var(--ink); transform:translateX(2px);}
   .prow:focus-visible{outline:2px solid var(--focus); outline-offset:2px;}
-  .prow .pidx{font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--muted); min-width:26px;}
+  .prow .pidx{font-family:"IBM Plex Mono",monospace; font-size:15px; font-weight:600; color:var(--ink); min-width:30px; font-variant-numeric:tabular-nums;}
   .prow .pmid{flex:1;}
   .prow .pname{font-weight:600; font-size:15px;}
   .prow .pfn{font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--muted); margin-top:2px;}
   .prow .parrow{color:var(--muted); font-size:18px;}
-  .diff{font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.1em; text-transform:uppercase; padding:3px 8px; border-radius:20px;}
-  .diff.easy{color:var(--ok); background:var(--ok-bg);}
-  .diff.med{color:var(--warn); background:var(--warn-bg);}
-  .diff.hard{color:var(--err); background:var(--err-bg);}
+  .diff{font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.1em; text-transform:uppercase; padding:3px 8px; border-radius:20px; background:transparent; border:1px solid currentColor;}
+  .diff.easy{color:var(--ok);}
+  .diff.med{color:var(--warn);}
+  .diff.hard{color:var(--err);}
 
   /* ---- solver ---- */
   .solver-head{margin-bottom:28px;}
-  .solver-head h2{font-family:"Space Grotesk",sans-serif; font-weight:600; font-size:26px; letter-spacing:-0.02em; margin:4px 0 14px;}
+  .solver-head h2{font-family:"Space Grotesk",sans-serif; font-weight:600; font-size:clamp(24px,4vw,34px); letter-spacing:-0.03em; line-height:1.08; margin:4px 0 14px;}
   .fn{display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:14px; background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:7px 12px;}
+
+  /* datasheet-style caption under each interactive figure */
+  .figcap{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.04em; color:var(--muted); margin-top:14px; padding-top:11px; border-top:1px solid var(--line-soft);}
+  .figcap b{color:var(--ink-soft); font-weight:600; letter-spacing:.02em;}
 
   /* Chapter 1 problem prompt */
   .problem-question{
@@ -95,7 +105,6 @@
     border-left:4px solid var(--focus);
     border-radius:var(--radius);
     padding:16px 18px;
-    box-shadow:0 6px 22px -18px rgba(20,24,31,.45);
   }
   .question-label{
     font-family:"IBM Plex Mono",monospace;
@@ -192,6 +201,15 @@
   .btn.ghost:hover{border-color:var(--ink); opacity:1;}
   .btn.sm{padding:6px 11px; font-size:13px;}
   .btn-row{display:flex; gap:9px; flex-wrap:wrap;}
+  .btn.next-success{
+    background:var(--ok);
+    border-color:var(--ok);
+  }
+  .btn.next-success:hover{
+    background:#0c7651;
+    border-color:#0c7651;
+    opacity:1;
+  }
 
   .glist{display:flex; flex-direction:column; gap:8px;}
   .gitem{display:flex; align-items:center; gap:10px; padding:7px 9px; border:1px solid var(--line-soft); border-radius:9px; background:var(--ground-2);}
@@ -584,27 +602,6 @@
     color:var(--ink);
   }
 
-  .sw-toolbar .reveal-btn{
-    width:100%;
-    justify-content:center;
-  }
-
-  .sw-legend{
-    display:flex;
-    gap:16px;
-    align-items:center;
-    font-family:"IBM Plex Mono",monospace;
-    font-size:11px;
-    color:var(--muted);
-    flex-wrap:wrap;
-  }
-
-  .sw-toolbar .sw-legend{
-    flex-direction:column;
-    align-items:flex-start;
-    gap:8px;
-  }
-
   .sw-stage .cmos-canvas{
     justify-content:center;
     padding:0;
@@ -633,16 +630,9 @@
       grid-template-columns:1fr;
     }
   }
-  .sw-legend span{display:inline-flex; align-items:center; gap:6px;}
-  .sw-legend i{width:15px; height:0; border-top:3px solid currentColor; display:inline-block; border-radius:2px;}
-
   .row-tabs{display:flex; gap:6px;}
   .row-tab{font-family:"IBM Plex Mono",monospace; font-size:12px; padding:6px 10px; border:1px solid var(--line); border-radius:8px; background:var(--surface); cursor:pointer; color:var(--ink-soft);}
   .row-tab.on{background:var(--ink); color:#fff; border-color:var(--ink);}
-  .reveal-btn{font-family:"IBM Plex Sans",sans-serif; font-size:13px; font-weight:600; padding:7px 12px; border-radius:8px; border:1px solid var(--line); background:var(--surface); cursor:pointer; color:var(--ink-soft); display:inline-flex; align-items:center; gap:8px;}
-  .reveal-btn.on{background:var(--ok-bg); border-color:var(--ok); color:var(--ok);}
-  .reveal-dot{width:9px; height:9px; border-radius:50%; border:2px solid currentColor;}
-  .reveal-btn.on .reveal-dot{background:currentColor;}
 
   .sw .sterm,.sw .sgate{stroke:var(--ink-soft); stroke-width:1.6; fill:none;}
   .sw .sgatebubble{stroke:var(--ink-soft); stroke-width:1.4; fill:var(--surface);}
@@ -778,3 +768,322 @@
     stroke:var(--ink-soft);
     stroke-width:1.5;
   }
+
+  /* ===================================================================
+     CMOS solver v3 — stacked layout, dual submit, feedback polish
+     =================================================================== */
+
+  /* Simulate now sits UNDER build; each is its own card. */
+  .cmos-stack{display:flex; flex-direction:column; gap:22px; align-items:stretch;}
+
+  /* Build card: instructions + transistors on the LEFT, diagram on the RIGHT. */
+  .cmos-build-body{
+    display:grid;
+    grid-template-columns:minmax(210px,268px) minmax(0,1fr);
+    gap:24px;
+    align-items:start;
+    margin-top:2px;
+  }
+  .cmos-build-body .cmos-toolbar{
+    flex-direction:column;
+    align-items:stretch;
+    gap:16px;
+    margin:0;
+    padding:0 20px 0 0;
+    border-bottom:none;
+    border-right:1px solid var(--line-soft);
+  }
+  .cmos-build-body .schem-palette{gap:8px;}
+  .cmos-canvas-col{min-width:0;}
+  .cmos-canvas-col .figcap{margin-top:12px; padding-top:10px;}
+  @media (max-width:760px){
+    .cmos-build-body{grid-template-columns:1fr; gap:16px;}
+    .cmos-build-body .cmos-toolbar{
+      border-right:none;
+      border-bottom:1px solid var(--line-soft);
+      padding:0 0 14px 0;
+    }
+  }
+
+  .cmos-build-actions{margin-top:16px;}
+  .cmos-sim-actions{margin-top:14px;}
+  #cmos-build-feedback-card{margin-top:14px;}
+
+  /* Read-only copy of the verified schematic shown during simulation. */
+  .cmos-reference{
+    margin:2px 0 18px;
+    padding:14px 16px 12px;
+    background:var(--ground-2);
+    border:1px solid var(--line-soft);
+    border-radius:10px;
+  }
+  .cmos-reference-label{
+    margin-bottom:8px;
+    font-family:"IBM Plex Mono",monospace;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  .cmos-reference-canvas{
+    display:flex;
+    justify-content:center;
+    min-width:0;
+    overflow:auto;
+  }
+  .cmos-reference-canvas .schem-svg{
+    width:min(100%, 430px);
+    max-height:420px;
+    pointer-events:none;
+    user-select:none;
+  }
+  .cmos-reference .figcap{margin-top:9px; padding-top:8px;}
+
+  /* --- Positive UI: the whole build card reads "correct" --- */
+  .cmos-build{transition:border-color .18s ease, box-shadow .18s ease;}
+  .cmos-build.is-correct{
+    border-color:var(--ok);
+    box-shadow:0 0 0 1px var(--ok), 0 2px 10px rgba(15,138,95,.10);
+  }
+  .cmos-build.is-correct .workspace-number{
+    background:var(--ok);
+    border-color:var(--ok);
+    color:#fff;
+  }
+  .cmos-build.is-correct .cmos-canvas.editor{
+    background:linear-gradient(var(--ok-bg),var(--ok-bg)) padding-box;
+    box-shadow:inset 0 0 0 1px rgba(15,138,95,.30);
+    transition:background .2s ease, box-shadow .2s ease;
+  }
+  @keyframes cmos-correct-pop{0%{transform:scale(.995);}55%{transform:scale(1.004);}100%{transform:scale(1);}}
+  .cmos-build.is-correct{animation:cmos-correct-pop .3s ease-out;}
+
+  /* --- Simulation table: clearer match / mismatch marking --- */
+  .simtable td.mark-bad{
+    background:var(--err-bg);
+    box-shadow:inset 0 0 0 2px var(--err);
+    color:var(--err);
+    font-weight:700;
+    position:relative;
+  }
+  .simtable td.mark-bad::after{
+    content:"";
+    position:absolute;
+    top:3px; right:3px;
+    width:5px; height:5px;
+    border-radius:50%;
+    background:var(--err);
+  }
+  .simtable td.mark-good{
+    background:var(--ok-bg);
+    box-shadow:inset 0 0 0 1px rgba(15,138,95,.35);
+  }
+
+  /* A tally chip the table-feedback message can show. */
+  .fb-count{
+    display:inline-flex; align-items:center; gap:6px;
+    font-family:"IBM Plex Mono",monospace; font-size:12px;
+    padding:2px 8px; border-radius:999px; margin-top:6px;
+  }
+  .fb-count.bad{background:var(--err-bg); color:var(--err); border:1px solid rgba(208,52,58,.35);}
+  .fb-count.good{background:var(--ok-bg); color:var(--ok); border:1px solid rgba(15,138,95,.35);}
+
+  /* ===================================================================
+     CMOS solver v3.1 — equal-width gate buttons + compact vertical space
+     =================================================================== */
+
+  /* 1) Gate segmented control fills the column, split equally (Va|Vb|Vc). */
+  .cmos-build-body .seg{width:100%;}
+  .cmos-build-body .seg button{
+    flex:1 1 0;
+    text-align:center;
+    padding-left:6px;
+    padding-right:6px;
+  }
+
+  /* 2) Tighten the whole solver so the diagram and the upper rows of the
+        table can be read together without so much scrolling. */
+  .cmos-stack{gap:16px;}
+  .cmos-build .workspace-heading,
+  .cmos-sim .workspace-heading{margin-bottom:11px;}
+  .cmos-build-body{gap:20px; margin-top:0;}
+  .cmos-build-body .cmos-toolbar{padding-right:16px;}
+  .cmos-build-actions{margin-top:12px;}
+  #cmos-build-feedback-card{margin-top:12px;}
+  .cmos-sim .table-note{margin-bottom:9px;}
+  .cmos-canvas-col .figcap{margin-top:9px; padding-top:8px;}
+
+  /* Diagram hugs its content (drop the 420px floor) and is bounded so a tall
+     network can't push the table off-screen. Only the WIDTH is constrained,
+     so the schematic always scales proportionally. On shorter viewports it
+     shrinks a little more to free up room for the table. */
+  .cmos-build-body .cmos-canvas{padding:0; justify-content:center;}
+  .cmos-build-body .cmos-canvas.editor{min-height:0;}
+  .cmos-build-body .schem-svg{max-width:min(100%, 420px); height:auto;}
+  @media (max-height:860px){ .cmos-build-body .schem-svg{max-width:360px;} }
+  @media (max-height:720px){ .cmos-build-body .schem-svg{max-width:308px;} }
+
+  /* ===================================================================
+     CMOS solver v3.2 — sequential gate (Simulate unlocks after Build)
+     =================================================================== */
+  .sim-lock{
+    display:flex; align-items:center; gap:9px;
+    font-family:"IBM Plex Mono",monospace; font-size:12px; line-height:1.4;
+    color:var(--muted);
+    background:var(--ground-2);
+    border:1px dashed var(--line);
+    border-radius:9px;
+    padding:10px 12px;
+    margin-bottom:12px;
+  }
+  .sim-lock b{color:var(--ink-soft); font-weight:600;}
+  .sim-lock-ic{flex:none; color:var(--muted);}
+  .sim-lock-ic rect,.sim-lock-ic path{
+    fill:none; stroke:currentColor; stroke-width:1.4;
+    stroke-linecap:round; stroke-linejoin:round;
+  }
+
+  /* While locked, the table is visible (so students see what's coming) but
+     dimmed and non-interactive; the check button is disabled via markup. */
+  .cmos-sim.is-locked #cmos-table{
+    opacity:.4;
+    pointer-events:none;
+    filter:grayscale(.35);
+    user-select:none;
+  }
+  .cmos-sim.is-locked .table-note{opacity:.5;}
+  .cmos-sim.is-locked .workspace-number{
+    background:var(--ground-2); color:var(--muted);
+  }
+
+  /* Once unlocked the lock banner is hidden by JS; give the stage a subtle
+     "active" cue on the step number. */
+  .cmos-sim:not(.is-locked) .workspace-number{
+    border-color:var(--focus); color:var(--focus);
+  }
+
+  /* ===================================================================
+     CMOS solver v3.3 — hard gate: Continue button reveals Simulate
+     =================================================================== */
+  .cmos-continue{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    margin-top:14px; padding-top:14px;
+    border-top:1px solid var(--line-soft);
+  }
+  .cmos-continue-hint{
+    font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--muted);
+  }
+
+  /* ===================================================================
+     CMOS solver v3.4 — solved table state + completion actions
+     =================================================================== */
+  .cmos-sim{transition:border-color .18s ease, box-shadow .18s ease;}
+  .cmos-sim.is-correct{
+    border-color:var(--ok);
+    box-shadow:0 0 0 1px var(--ok), 0 2px 10px rgba(15,138,95,.10);
+  }
+  .cmos-sim.is-correct .workspace-number{
+    background:var(--ok); border-color:var(--ok); color:#fff;
+  }
+  .cmos-complete-actions{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    margin-top:14px; padding-top:14px;
+    border-top:1px solid var(--line-soft);
+  }
+  .cmos-complete-msg{
+    font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ok); font-weight:600;
+  }
+
+  /* ===================================================================
+     Switch-level v2 — staged levels, step indicator, positive state
+     =================================================================== */
+
+  /* Contextual action row (replaces the old fixed submit row). */
+  .sw-actions{
+    display:flex; gap:9px; flex-wrap:wrap;
+    margin-top:18px; padding-top:16px;
+    border-top:1px solid var(--line-soft);
+  }
+
+  /* Positive UI: the whole analysis card reads "correct" for a solved stage. */
+  .sw-main-card{transition:border-color .18s ease, box-shadow .18s ease;}
+  .sw-main-card.is-correct{
+    border-color:var(--ok);
+    box-shadow:0 0 0 1px var(--ok), 0 2px 10px rgba(15,138,95,.10);
+  }
+  .sw-main-card.is-correct .workspace-number{
+    background:var(--ok); border-color:var(--ok); color:#fff;
+  }
+
+  /* Step indicator: one chip per combination. */
+  .sw-stagebar{display:flex; gap:6px; flex-wrap:wrap; margin:2px 0 9px;}
+  .sw-step{
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:26px; height:26px; padding:0 7px;
+    border:1px solid var(--line); border-radius:7px;
+    background:var(--surface);
+    font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--muted);
+    transition:border-color .12s, color .12s, background .12s;
+  }
+  .sw-step.current{border-color:var(--focus); color:var(--focus); font-weight:600; box-shadow:0 0 0 1px var(--focus);}
+  .sw-step.done{border-color:var(--ok); color:var(--ok); background:var(--ok-bg);}
+
+  .sw-stage-inputs{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+
+  .sw-inputs-label{
+    margin-top:2px;
+    font-family:"IBM Plex Mono",monospace;
+    font-size:10px;
+    font-weight:600;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+
+  .sw-input-chip{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    min-height:46px;
+    padding:9px 12px;
+    border:1px solid var(--line);
+    border-left:4px solid currentColor;
+    border-radius:9px;
+    font-family:"IBM Plex Mono",monospace;
+    font-weight:600;
+    background:var(--surface);
+  }
+
+  .sw-input-chip.low{color:var(--g2);}
+  .sw-input-chip.high{color:var(--g0);}
+
+  .sw-input-name{
+    min-width:24px;
+    font-size:16px;
+    color:var(--ink);
+  }
+
+  .sw-input-equals{
+    font-size:16px;
+    color:var(--muted);
+  }
+
+  .sw-input-value{
+    font-size:19px;
+    line-height:1;
+    color:currentColor;
+  }
+
+  /* Quiet reset, tucked next to the progress line. */
+  .sw-reset-link{
+    font-family:"IBM Plex Mono",monospace; font-size:11px;
+    background:none; border:none; color:var(--muted); cursor:pointer;
+    text-decoration:underline; text-underline-offset:2px;
+    margin-left:8px; padding:0;
+  }
+  .sw-reset-link:hover{color:var(--ink);}

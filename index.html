@@ -31,16 +31,16 @@
 
   <!-- VIEW: CHAPTERS -->
   <section id="view-chapters" class="view active">
-    <div class="eyebrow">Practice by chapter</div>
-    <h1 class="page">Pick a chapter to practice</h1>
-    <p class="lede">Choose a chapter, pick a problem, and work it on the map. The bench checks your grouping as you go — not just whether it's right, but whether it's fully simplified.</p>
+    <div class="eyebrow">Practice by topic</div>
+    <h1 class="page">Pick a topic to practice</h1>
+    <p class="lede">Choose a topic, pick a problem, and work it on the map. The bench checks your grouping as you go — not just whether it's right, but whether it's fully simplified.</p>
     <div id="chapters" class="chapters"></div>
   </section>
 
   <!-- VIEW: PROBLEMS -->
   <section id="view-problems" class="view">
     <div class="crumbs">
-      <button onclick="goChapters()">Chapters</button>
+      <button onclick="goChapters()">Topics</button>
       <span class="sep">/</span>
       <span id="crumb-chapter" class="here"></span>
     </div>
@@ -53,7 +53,7 @@
   <!-- VIEW: SOLVER -->
   <section id="view-solver" class="view">
     <div class="crumbs">
-      <button onclick="goChapters()">Chapters</button>
+      <button onclick="goChapters()">Topics</button>
       <span class="sep">/</span>
       <button id="crumb-back-chapter"></button>
       <span class="sep">/</span>
@@ -75,6 +75,7 @@
       <div class="kmap-outer">
         <div class="axis-note">Click cells to build a group, then <b>Add group</b>. Groups may overlap.</div>
         <div id="kgrid" class="kgrid"></div>
+        <div class="figcap"><b>Fig. 1</b> — Karnaugh map</div>
       </div>
       <div class="panel">
         <div class="card">
@@ -113,8 +114,10 @@
 
     <!-- TYPE: CMOS -->
     <div id="solver-cmos" style="display:none;">
-      <div class="cmos-wrap">
-        <div class="cmos-left">
+      <div class="cmos-stack">
+
+        <!-- 01 — Build the circuit -->
+        <div class="card cmos-build" id="cmos-build-card">
           <div class="workspace-heading">
             <span class="workspace-number">01</span>
             <div>
@@ -122,42 +125,70 @@
               <div class="workspace-desc">Drag transistors onto the schematic, then wire their terminals together.</div>
             </div>
           </div>
-          <div class="cmos-toolbar" id="cmos-toolbar"></div>
-          <div class="cmos-canvas" id="cmos-canvas"></div>
-        </div>
-        <div class="cmos-right">
-          <div class="card">
-            <div class="workspace-heading">
-              <span class="workspace-number">02</span>
-              <div>
-                <div class="workspace-title">Simulate your circuit</div>
-                <div class="workspace-desc">Determine which transistors conduct for each input combination.</div>
-              </div>
+          <div class="cmos-build-body">
+            <div class="cmos-toolbar" id="cmos-toolbar"></div>
+            <div class="cmos-canvas-col">
+              <div class="cmos-canvas" id="cmos-canvas"></div>
+              <div class="figcap"><b>Fig. 1</b> — CMOS network</div>
             </div>
-            <div class="table-note">Mark closed transistors with <b>C</b>, then set V<sub>y</sub>.</div>
-            <div id="cmos-table"></div>
           </div>
-          <div class="btn-row">
-            <button class="btn" onclick="cmosCheck()">Check my answer</button>
+          <div class="btn-row cmos-build-actions">
+            <button class="btn" onclick="cmosCheckBuild()">Check circuit</button>
             <button class="btn ghost" onclick="cmosReset()">Reset</button>
+          </div>
+          <div class="card build-feedback" id="cmos-build-feedback-card" style="display:none;">
+            <h3>Feedback</h3>
+            <div class="feedback" id="cmos-build-feedback"></div>
+          </div>
+          <div class="cmos-continue" id="cmos-continue" style="display:none;">
+            <button class="btn" id="cmos-continue-btn" onclick="cmosContinueToSim()">Continue to simulation &rarr;</button>
+            <span class="cmos-continue-hint">Your circuit is verified — move on to fill in its truth table.</span>
+          </div>
+        </div>
+
+        <!-- 02 — Simulate your circuit (revealed only after the build is verified) -->
+        <div class="card cmos-sim" id="cmos-sim-card" style="display:none;">
+          <div class="workspace-heading">
+            <span class="workspace-number">02</span>
+            <div>
+              <div class="workspace-title">Simulate your circuit</div>
+              <div class="workspace-desc">Determine which transistors conduct for each input combination.</div>
+            </div>
+          </div>
+          <div class="cmos-reference">
+            <div class="cmos-reference-label">Completed circuit</div>
+            <div class="cmos-reference-canvas" id="cmos-reference-canvas" aria-label="Completed CMOS circuit"></div>
+            <div class="figcap"><b>Fig. 1</b> — Completed CMOS network</div>
+          </div>
+          <div class="table-note">Mark closed transistors with <b>C</b>, then set V<sub>y</sub>.</div>
+          <div id="cmos-table"></div>
+          <div class="btn-row cmos-sim-actions">
+            <button class="btn" id="cmos-check-table-btn" onclick="cmosCheckTable()">Check table</button>
+            <button class="btn ghost" id="cmos-back-build-btn" onclick="cmosBackToBuild()">Back to circuit</button>
           </div>
           <div class="card" id="cmos-feedback-card" style="display:none;">
             <h3>Feedback</h3>
             <div class="feedback" id="cmos-feedback"></div>
           </div>
+          <div class="cmos-complete-actions" id="cmos-complete-actions" style="display:none;">
+            <span class="cmos-complete-msg">Solved — this problem is complete.</span>
+            <button class="btn" onclick="cmosExploreMoreProblems()">Explore more problems &rarr;</button>
+            <button class="btn ghost" onclick="cmosBackToBuild()">Back to circuit</button>
+          </div>
         </div>
+
       </div>
     </div>
 
     <!-- TYPE: SWITCH-LEVEL -->
     <div id="solver-switch" style="display:none;">
       <div class="sw-wrap">
-        <div class="cmos-left sw-main-card">
+        <div class="cmos-left sw-main-card" id="sw-main-card">
           <div class="workspace-heading">
             <span class="workspace-number">01</span>
             <div>
-              <div class="workspace-title">Analyze the circuit</div>
-              <div class="workspace-desc">Choose an input combination, set the switches and node voltages, then submit.</div>
+              <div class="workspace-title">Set the switch states</div>
+              <div class="workspace-desc">For each input combination, click each transistor to toggle its switch open or closed. Then click each node voltage to set it and submit your answer.</div>
             </div>
           </div>
 
@@ -165,11 +196,9 @@
             <div class="sw-toolbar" id="sw-toolbar"></div>
             <div class="cmos-canvas" id="sw-canvas"></div>
           </div>
+          <div class="figcap"><b>Fig. 1</b> — Switch-level schematic</div>
 
-          <div class="sw-submit-row">
-            <button class="btn" id="sw-submit" onclick="swCheck()">Submit combination</button>
-            <button class="btn ghost" onclick="swReset()">Reset problem</button>
-          </div>
+          <div class="sw-actions" id="sw-actions"></div>
 
           <div class="card sw-inline-feedback" id="sw-feedback-card" style="display:none;">
             <h3>Feedback</h3>
@@ -200,6 +229,7 @@
           </div>
           <div class="timing-instruction">Use the circuit above to determine Vᵧ. Hover near 0 V or 3.3 V to preview, then click and drag to draw the waveform.</div>
           <div id="timing-canvas"></div>
+          <div class="figcap"><b>Fig. 1</b> — Timing diagram</div>
         </div>
         <div class="timing-side">
           <div class="card"><h3>Model</h3><div id="timing-model-text" class="hint" style="margin-top:0;"></div></div>

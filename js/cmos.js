@@ -1,19 +1,40 @@
 /* ============================================================
    CMOS PROBLEM TYPE  —  builder + simulation + table + feedback
    (Claude-maintained; add problems via the data list at the top)
+
+   Interaction model (unified pointer input; works for mouse + touch):
+     • Drag PMOS / NMOS from the palette onto the sheet — OR click one to
+       arm it, then click a spot on the sheet to drop it there.
+       A snapped ghost shows exactly where it will land.
+     • Drag a transistor body to reposition it (purely cosmetic — never
+       changes the circuit or clears your answer).
+     • Drag from any terminal to another terminal, onto an existing wire,
+       or onto ANY point along the VDD / Vy rail to connect. A live
+       preview + snap highlight shows the target.
+     • With a transistor selected, tap PMOS / NMOS to change its type.
+     • Tap a wire / junction to select it; Delete (button or key) removes it.
+   All gestures run through window-level listeners so the canvas can freely
+   re-render mid-drag without dropping the gesture. The toolbar keeps a
+   constant height so selecting a transistor never shifts or rescales the
+   diagram.
    ============================================================ */
 const cmos = {
   p:null,
   devices:[],
   wires:[],
-  junctions:[],
+  junctions:[],          // {id,x,y[,rail]}  rail-tagged junctions sit on a rail net
   nextTrans:0,
-  selected:null,        // {type:"device"|"wire", id}
+  selected:null,         // {type:"device"|"wire"|"junction", id}
   tool:{kind:"pmos", gate:"Va"},
+  armed:null,            // "pmos" | "nmos" | null   (click-to-place mode)
+  armedHover:null,       // {x,y} snapped ghost position while armed
   table:[],
   verdict:null,
-  drag:null,
-  wiring:null
+  buildPassed:false,     // last Build check was correct (enables "Continue")
+  simUnlocked:false,     // student has moved on: the Simulate stage is revealed
+  questionWasVisible:false,
+  drag:null,             // {mode:"place"|"move", ...}
+  wiring:null            // {from, fromRail, fromPos, cursor, snap}
 };
 
 /* -- simulation helpers -- */
@@ -92,6 +113,13 @@ function cmosGeom(){
   return {W,cx,vddY,workTop,workBottom,vyY,gndY};
 }
 
+/* Rails the student may connect to for the current build. */
+function railsForBuild(){
+  const g=cmosGeom();
+  if(cmos.p && cmos.p.build==="pulldown") return [{id:"VY",y:g.vyY}];
+  return [{id:"VDD",y:g.vddY},{id:"VY",y:g.vyY}];
+}
+
 function unionFindEndpoints(){
   const ids=["VDD","VY"];
   cmos.devices.forEach(d=>ids.push(...endpointIdsForDevice(d)));
@@ -133,6 +161,9 @@ function builtNetworkConduct(assign){
   }
 
   cmos.wires.forEach(w=>unite(w.a,w.b));
+
+  // Rail-tagged junctions belong to their rail's electrical net.
+  cmos.junctions.forEach(j=>{ if(j.rail) unite(j.id,j.rail); });
 
   cmos.devices.forEach(d=>{
     if(transOn(d,assign)) unite(`${d.id}:top`,`${d.id}:bottom`);
@@ -181,13 +212,43 @@ function glyph(cx, cy, t, name){
     s+=`<line x1="${leadX}" y1="${cy}" x2="${gatePlateX}" y2="${cy}"/>`;
   }
 
-  s+=`<text class="tname" x="${cx+8}" y="${cy-12}">${name}</text>`;
-  s+=`<text x="${leadX-4}" y="${cy+3}" text-anchor="end">${t.gate}</text>`;
+  if(name!=="") s+=`<text class="tname" x="${cx+8}" y="${cy-12}">${name}</text>`;
+  if(t.gate!=="") s+=`<text x="${leadX-4}" y="${cy+3}" text-anchor="end">${t.gate}</text>`;
   s+=`</g>`;
   return s;
 }
 
+/* A compact schematic symbol for the palette buttons — same glyph as the
+   diagram, so the palette matches the standard exactly. */
+function paletteSymbolSvg(kind){
+  const w=64,h=48,cx=40,cy=24;
+  return `<svg class="palette-glyph" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">`+
+    glyph(cx,cy,{kind,gate:""},"")+
+  `</svg>`;
+}
+
+/* One-time CSS augment: palette highlight/press effect, constant status
+   height, and rail cursor. Uses existing theme variables. */
+function cmosInjectStyles(){
+  if(document.getElementById("cmos-inline-augment")) return;
+  const st=document.createElement("style");
+  st.id="cmos-inline-augment";
+  st.textContent=`
+    .palette-part{transition:transform .08s ease, border-color .12s ease, box-shadow .12s ease, background .12s ease;}
+    .palette-part.pressed{transform:scale(.95);}
+    .palette-part.on{border-color:var(--ink);}
+    .palette-part.armed{border-color:var(--focus);background:rgba(47,107,255,.10);box-shadow:0 0 0 2px var(--focus) inset;}
+    .palette-glyph{display:block;margin:0 auto 2px;}
+    .palette-label{display:block;text-align:center;}
+    .schem-status{min-height:2.6em;}
+    .rail-hot{cursor:crosshair;}
+    svg.schem-svg.armed{cursor:crosshair;}
+  `;
+  document.head.appendChild(st);
+}
+
 function buildCmos(p){
+  const question=document.getElementById("solve-question");
   cmos.p=p;
   cmos.devices=[];
   cmos.wires=[];
@@ -195,15 +256,20 @@ function buildCmos(p){
   cmos.nextTrans=0;
   cmos.selected=null;
   cmos.tool={kind:p.build==="pulldown"?"nmos":"pmos",gate:p.inputs[0]};
+  cmos.armed=null;
+  cmos.armedHover=null;
+  cmos.buildPassed=false;
+  cmos.simUnlocked=false;
+  cmos.questionWasVisible=!!(question && getComputedStyle(question).display!=="none");
   cmos.table=cmosInputRows(p).map(()=>({marks:new Set(),vy:null}));
   cmos.verdict=null;
-  cmos.drag=null;
-  cmos.wiring=null;
+  cmosCancelGesture();
+  cmosInjectStyles();
 
   renderCmosToolbar();
   renderCmosCanvas();
   renderCmosTable();
-  document.getElementById("cmos-feedback-card").style.display="none";
+  cmosHideFeedback();
 }
 
 function selectedDevice(){
@@ -214,40 +280,40 @@ function selectedDevice(){
 function renderCmosToolbar(){
   const p=cmos.p, host=document.getElementById("cmos-toolbar");
   const d=selectedDevice();
+  const activeKind = d ? d.kind : cmos.tool.kind;
+  const activeGate = d ? d.gate : cmos.tool.gate;
 
   const seg=(opts,active)=>`<div class="seg">`+
     opts.map(o=>`<button class="${o.val===active?"on":""}" data-k="${o.key}" data-v="${o.val}" type="button">${o.label}</button>`).join("")+
     `</div>`;
 
+  const part=(kind,label)=>{
+    const on = activeKind===kind ? " on" : "";
+    const armed = cmos.armed===kind ? " armed" : "";
+    return `<div class="palette-part${on}${armed}" data-part="${kind}" style="touch-action:none;" title="Drag onto the sheet, or click then click a spot to place">
+        ${paletteSymbolSvg(kind)}
+        <span class="palette-label">${label}</span>
+      </div>`;
+  };
+
+  let status;
+  if(d) status=`Editing <b>${d.name}</b> — tap PMOS / NMOS to change its type, drag it to move, Delete to remove.`;
+  else if(cmos.armed) status=`Placing a <b>${cmos.armed==="pmos"?"PMOS":"NMOS"}</b> — click a spot on the sheet to drop it.`;
+  else status=`No transistor selected.`;
+
   host.innerHTML=`
     <div class="tool-group">
-      <span class="tg-label">${d?"Selected transistor":"Transistor"}</span>
+      <span class="tg-label">Transistor</span>
       <div class="schem-palette">
-        <div class="palette-part" draggable="true" data-part="pmos" title="Drag a PMOS onto the schematic">
-          <span class="palette-symbol pmos"><span></span></span>
-          PMOS
-        </div>
-        <div class="palette-part" draggable="true" data-part="nmos" title="Drag an NMOS onto the schematic">
-          <span class="palette-symbol nmos"></span>
-          NMOS
-        </div>
+        ${part("pmos","PMOS")}
+        ${part("nmos","NMOS")}
       </div>
     </div>
 
     <div class="tool-group">
       <span class="tg-label">Gate</span>
-      ${seg(p.inputs.map(g=>({key:"gate",val:g,label:g})),d?d.gate:cmos.tool.gate)}
+      ${seg(p.inputs.map(g=>({key:"gate",val:g,label:g})),activeGate)}
     </div>
-
-    ${d ? `
-      <div class="tool-group">
-        <span class="tg-label">Type</span>
-        ${seg([
-          {key:"kind",val:"pmos",label:"PMOS"},
-          {key:"kind",val:"nmos",label:"NMOS"}
-        ],d.kind)}
-      </div>
-    ` : ""}
 
     <div class="tool-group">
       <span class="tg-label">&nbsp;</span>
@@ -257,33 +323,24 @@ function renderCmosToolbar(){
       </div>
     </div>
 
-    ${d ? `
-      <div class="schem-status">
-        Selected transistor <b>${d.name}</b>.
-      </div>
-    ` : cmos.selected?.type==="wire" ? `
-      <div class="schem-status">
-        Selected <b>wire</b>.
-      </div>
-    ` : cmos.selected?.type==="junction" ? `
-      <div class="schem-status">
-        Selected <b>junction</b>.
-      </div>
-    ` : ""}
+    <div class="schem-status">${status}</div>
 
     <div class="schem-tip">
-      Drag between terminals to wire. Drop near an existing wire to create a junction.
+      Drag <b>PMOS</b> / <b>NMOS</b> onto the sheet — or click one, then click a spot to drop it. Drag from a terminal, or from the <b>VDD</b> / <b>V\u1d67</b> rail, and release on another terminal or anywhere along a rail to connect.
     </div>
   `;
 
+  // Palette: press feedback + start a place gesture. It becomes drag-to-place
+  // if the pointer moves onto the sheet, or a click (arm / change type) if it
+  // is released without ever entering the sheet.
   host.querySelectorAll(".palette-part").forEach(el=>{
-    el.addEventListener("dragstart",e=>{
-      const payload={
-        kind:el.dataset.part,
-        gate:cmos.tool.gate
-      };
-      e.dataTransfer.setData("application/json",JSON.stringify(payload));
-      e.dataTransfer.effectAllowed="copy";
+    el.addEventListener("pointerdown",e=>{
+      if(e.pointerType==="mouse" && e.button!==0) return;
+      e.preventDefault();
+      el.classList.add("pressed");
+      cmos.drag={mode:"place", kind:el.dataset.part, gate:cmos.tool.gate, x:null, y:null, inside:false, everInside:false};
+      cmosBeginGesture();
+      renderCmosCanvas();
     });
   });
 
@@ -294,11 +351,7 @@ function renderCmosToolbar(){
 
       if(sd){
         sd[key]=val;
-
-        // Keep the palette choice in sync with the last thing the student chose.
-        // This prevents a newly placed transistor from jumping back to Va.
-        if(key==="gate") cmos.tool.gate=val;
-        if(key==="kind") cmos.tool.kind=val;
+        if(key==="gate") cmos.tool.gate=val;   // keep palette in sync with last choice
       } else {
         cmos.tool[key]=val;
       }
@@ -307,7 +360,7 @@ function renderCmosToolbar(){
       renderCmosToolbar();
       renderCmosCanvas();
       renderCmosTable();
-      document.getElementById("cmos-feedback-card").style.display="none";
+      cmosHideFeedback();
     };
   });
 
@@ -324,12 +377,14 @@ function clearSchematic(){
   cmos.junctions=[];
   cmos.nextTrans=0;
   cmos.selected=null;
+  cmos.armed=null;
+  cmos.armedHover=null;
   cmos.table=cmosInputRows(cmos.p).map(()=>({marks:new Set(),vy:null}));
   cmos.verdict=null;
   renderCmosToolbar();
   renderCmosCanvas();
   renderCmosTable();
-  document.getElementById("cmos-feedback-card").style.display="none";
+  cmosHideFeedback();
 }
 
 function deleteSelectedSchematicItem(){
@@ -352,7 +407,7 @@ function deleteSelectedSchematicItem(){
   renderCmosToolbar();
   renderCmosCanvas();
   renderCmosTable();
-  document.getElementById("cmos-feedback-card").style.display="none";
+  cmosHideFeedback();
 }
 
 function snapGrid(v,step=10){
@@ -382,14 +437,15 @@ function addSchematicDevice(kind,gate,x,y){
 
   cmos.devices.push(d);
 
-  // Do not auto-select a newly placed transistor.
-  // This keeps the gate/type controls aimed at the NEXT transistor the student will place.
+  // Do not auto-select a newly placed transistor — keeps the controls aimed
+  // at the NEXT transistor the student will place.
   cmos.selected=null;
   cmos.verdict=null;
 
   renderCmosToolbar();
   renderCmosCanvas();
   renderCmosTable();
+  cmosHideFeedback();
 }
 
 function wireExists(a,b){
@@ -406,7 +462,21 @@ function addWire(a,b){
   renderCmosToolbar();
   renderCmosCanvas();
   renderCmosTable();
-  document.getElementById("cmos-feedback-card").style.display="none";
+  cmosHideFeedback();
+}
+
+/* Reuse a nearby rail junction if one already sits at this spot, else make one. */
+function createRailJunction(railId,point){
+  const g=cmosGeom();
+  const y = railId==="VDD"?g.vddY : railId==="VY"?g.vyY : g.gndY;
+  const x = snapGrid(Math.max(45,Math.min(g.W-45, point?point.x:g.cx)));
+
+  const existing=cmos.junctions.find(j=>j.rail===railId && Math.abs(j.x-x)<=6);
+  if(existing) return existing.id;
+
+  const id="j"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  cmos.junctions.push({id,x,y,rail:railId});
+  return id;
 }
 
 function createJunctionOnWire(wireId,point){
@@ -451,7 +521,7 @@ function connectEndpointToWire(endpoint,wireId,point){
   renderCmosToolbar();
   renderCmosCanvas();
   renderCmosTable();
-  document.getElementById("cmos-feedback-card").style.display="none";
+  cmosHideFeedback();
 }
 
 function orthogonalPoints(a,b){
@@ -502,8 +572,6 @@ function nearestPointOnWire(w,p){
 
   if(!best) return null;
 
-  // Keep the junction precisely on the orthogonal wire while snapping along
-  // the direction of the segment to the drafting grid.
   const p0=pts[best.seg], p1=pts[best.seg+1];
   if(Math.abs(p0.x-p1.x)<2){
     best.x=p0.x;
@@ -529,8 +597,24 @@ function nearestWire(point,excludeWireId=null,radius=20){
   return best;
 }
 
+/* Nearest point along a connectable rail (VDD / Vy). */
+function nearestRail(point,radius=22){
+  const g=cmosGeom();
+  let best=null;
+  railsForBuild().forEach(r=>{
+    if(point.x < 45-radius || point.x > g.W-45+radius) return;
+    const d=Math.abs(point.y-r.y);
+    if(d<=radius && (!best || d<best.d)){
+      best={id:r.id,d,point:{x:snapGrid(Math.max(45,Math.min(g.W-45,point.x))),y:r.y}};
+    }
+  });
+  return best;
+}
+
 function allSchematicEndpoints(){
-  const ids=cmos.p.build==="pulldown" ? ["VY","GND"] : ["VDD","VY"];
+  // VDD / Vy are handled as rails (connect anywhere along the line), so they
+  // are NOT point endpoints here. GND (pull-down) stays a single point.
+  const ids = cmos.p.build==="pulldown" ? ["GND"] : [];
   cmos.devices.forEach(d=>ids.push(`${d.id}:top`,`${d.id}:bottom`));
   cmos.junctions.forEach(j=>ids.push(j.id));
   return ids
@@ -685,6 +769,162 @@ function renderGivenPullUp(p,centerX,vyY){
   return {svg,h:vyY};
 }
 
+/* ============================================================
+   Pointer gesture plumbing
+   One gesture (place / move / wire) is active at a time. Move + up listeners
+   live on window so a mid-drag canvas re-render can't drop the gesture.
+   ============================================================ */
+let cmosGestureHandlers=null;
+
+function cmosRemoveGestureListeners(){
+  if(cmosGestureHandlers){
+    window.removeEventListener("pointermove",cmosGestureHandlers.move);
+    window.removeEventListener("pointerup",cmosGestureHandlers.up);
+    window.removeEventListener("pointercancel",cmosGestureHandlers.up);
+    cmosGestureHandlers=null;
+  }
+}
+
+function cmosBeginGesture(){
+  cmosRemoveGestureListeners();        // never stack listeners; keep the new state intact
+  const move=e=>cmosGestureMove(e);
+  const up=e=>cmosGestureUp(e);
+  cmosGestureHandlers={move,up};
+  window.addEventListener("pointermove",move);
+  window.addEventListener("pointerup",up);
+  window.addEventListener("pointercancel",up);
+}
+
+function cmosCancelGesture(){
+  cmosRemoveGestureListeners();
+  cmos.drag=null;
+  cmos.wiring=null;
+}
+
+function cmosClientToSvg(clientX,clientY){
+  const svgEl=document.querySelector("#cmos-canvas svg");
+  if(!svgEl || !svgEl.getScreenCTM) return null;
+  const m=svgEl.getScreenCTM();
+  if(!m) return null;
+  const pt=svgEl.createSVGPoint();
+  pt.x=clientX; pt.y=clientY;
+  const p=pt.matrixTransform(m.inverse());
+  return {x:p.x,y:p.y};
+}
+
+function cmosInsideSheet(pnt){
+  const g=cmosGeom();
+  return !!pnt && pnt.x>40 && pnt.x<g.W-40 && pnt.y>g.workTop-8 && pnt.y<g.workBottom+8;
+}
+
+function cmosGestureMove(e){
+  const pnt=cmosClientToSvg(e.clientX,e.clientY);
+  if(!pnt) return;
+  const g=cmosGeom();
+
+  if(cmos.drag && cmos.drag.mode==="place"){
+    const inside=cmosInsideSheet(pnt);
+    cmos.drag.inside=inside;
+    if(inside) cmos.drag.everInside=true;
+    cmos.drag.x=snapGrid(Math.max(55,Math.min(g.W-55,pnt.x)));
+    cmos.drag.y=snapGrid(Math.max(g.workTop+26,Math.min(g.workBottom-26,pnt.y)));
+    renderCmosCanvas();
+
+  } else if(cmos.drag && cmos.drag.mode==="move"){
+    const d=cmos.devices.find(x=>x.id===cmos.drag.id);
+    if(!d) return;
+    const nx=snapGrid(Math.max(55,Math.min(g.W-55,pnt.x+cmos.drag.dx)));
+    const ny=snapGrid(Math.max(g.workTop+26,Math.min(g.workBottom-26,pnt.y+cmos.drag.dy)));
+    if(Math.abs(nx-d.x)>0.5 || Math.abs(ny-d.y)>0.5) cmos.drag.moved=true;
+    d.x=nx; d.y=ny;
+    renderCmosCanvas();
+
+  } else if(cmos.wiring){
+    const snap=nearestEndpoint(pnt,cmos.wiring.from,28);
+    const railSnap=snap ? null : nearestRail(pnt,22);
+    const wireSnap=(snap||railSnap) ? null : nearestWire(pnt,null,18);
+
+    cmos.wiring.snap = snap ? {type:"endpoint",id:snap.id}
+      : railSnap ? {type:"rail",id:railSnap.id,point:railSnap.point}
+      : wireSnap ? {type:"wire",id:wireSnap.wire.id,point:{x:wireSnap.x,y:wireSnap.y}}
+      : null;
+    cmos.wiring.cursor = snap ? snap.pos
+      : railSnap ? railSnap.point
+      : wireSnap ? {x:wireSnap.x,y:wireSnap.y}
+      : pnt;
+    renderCmosCanvas();
+  }
+}
+
+function cmosGestureUp(e){
+  const drag=cmos.drag, wiring=cmos.wiring;
+
+  cmosRemoveGestureListeners();
+  cmos.drag=null;
+  cmos.wiring=null;
+
+  if(drag && drag.mode==="place"){
+    const pnt=cmosClientToSvg(e.clientX,e.clientY);
+
+    if(cmosInsideSheet(pnt)){
+      // drag-to-place
+      cmos.armed=null; cmos.armedHover=null;
+      addSchematicDevice(drag.kind,drag.gate,pnt.x,pnt.y);
+
+    } else if(!drag.everInside){
+      // a tap on the palette (never dragged onto the sheet)
+      const sd=selectedDevice();
+      if(sd){
+        // change the selected transistor's type
+        sd.kind=drag.kind;
+        cmos.tool.kind=drag.kind;
+        cmos.verdict=null;
+        renderCmosToolbar();
+        renderCmosCanvas();
+        renderCmosTable();
+        cmosHideFeedback();
+      } else {
+        // arm (or toggle off) click-to-place
+        cmos.armed = (cmos.armed===drag.kind) ? null : drag.kind;
+        cmos.tool.kind=drag.kind;
+        cmos.armedHover=null;
+        renderCmosToolbar();
+        renderCmosCanvas();
+      }
+    } else {
+      // dragged onto the sheet then released off it -> cancel
+      renderCmosToolbar();
+      renderCmosCanvas();
+    }
+
+  } else if(drag && drag.mode==="move"){
+    // Position is cosmetic — do not disturb the answer or feedback.
+    renderCmosCanvas();
+
+  } else if(wiring){
+    const snap=wiring.snap;
+    let target=null;
+    if(snap && snap.type==="endpoint" && snap.id!==wiring.from) target={kind:"endpoint",id:snap.id};
+    else if(snap && snap.type==="rail") target={kind:"rail",id:snap.id,point:snap.point};
+    else if(snap && snap.type==="wire") target={kind:"wire",id:snap.id,point:snap.point};
+
+    if(target){
+      const from = wiring.fromRail ? createRailJunction(wiring.fromRail,wiring.fromPos) : wiring.from;
+
+      if(target.kind==="endpoint"){
+        if(target.id!==from) addWire(from,target.id); else renderCmosCanvas();
+      } else if(target.kind==="rail"){
+        const j=createRailJunction(target.id,target.point);
+        if(j!==from) addWire(from,j); else renderCmosCanvas();
+      } else {
+        connectEndpointToWire(from,target.id,target.point);
+      }
+    } else {
+      renderCmosCanvas();
+    }
+  }
+}
+
 function renderCmosCanvas(){
   const p=cmos.p;
   const g=cmosGeom();
@@ -701,7 +941,11 @@ function renderCmosCanvas(){
     H=g.vyY+givenDraw.h+8;
   }
 
-  let svg=`<svg class="schem-svg" viewBox="0 0 ${g.W} ${H}" width="${g.W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`;
+  const snapId=(cmos.wiring && cmos.wiring.snap && cmos.wiring.snap.type==="endpoint")
+    ? cmos.wiring.snap.id : null;
+  const tgt=id=>snapId===id ? " snap-target" : "";
+
+  let svg=`<svg class="schem-svg${cmos.armed?" armed":""}" viewBox="0 0 ${g.W} ${H}" width="${g.W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`;
 
   // light drafting grid only in the editable region
   for(let x=20;x<g.W;x+=20){
@@ -714,28 +958,30 @@ function renderCmosCanvas(){
     // Given PUN above Vy.
     svg+=givenDraw.svg;
 
-    // Fixed Vy node at the top of the editable pull-down area.
+    // Editable Vy rail (connect anywhere along it).
     svg+=`<line class="rail" x1="45" y1="${g.vyY}" x2="${g.W-45}" y2="${g.vyY}"/>`;
     svg+=`<circle class="terminal fixed" data-endpoint="VY" cx="${g.cx}" cy="${g.vyY}" r="4"/>`;
-    svg+=`<circle class="terminal-hot" data-endpoint="VY" cx="${g.cx}" cy="${g.vyY}" r="16"/>`;
     svg+=`<text class="vy-tag" x="${g.W-38}" y="${g.vyY+4}">V\u1d67</text>`;
 
-    // Fixed GND connection point at the bottom.
-    svg+=`<circle class="terminal fixed" data-endpoint="GND" cx="${g.cx}" cy="${g.gndY}" r="4"/>`;
+    // Fixed GND connection point at the bottom (single point).
+    svg+=`<circle class="terminal fixed${tgt("GND")}" data-endpoint="GND" cx="${g.cx}" cy="${g.gndY}" r="4"/>`;
     svg+=`<circle class="terminal-hot" data-endpoint="GND" cx="${g.cx}" cy="${g.gndY}" r="16"/>`;
     svg+=groundSvg(g.cx,g.gndY+14);
   } else {
-    // Fixed VDD and Vy for the editable pull-up.
+    // Fixed VDD and Vy rails for the editable pull-up (connect anywhere).
     svg+=`<line class="rail" x1="45" y1="${g.vddY}" x2="${g.W-45}" y2="${g.vddY}"/>`;
     svg+=`<text class="pwr-tag" x="${g.W-45}" y="${g.vddY-8}" text-anchor="end">VDD = 3.3V</text>`;
     svg+=`<circle class="terminal fixed" data-endpoint="VDD" cx="${g.cx}" cy="${g.vddY}" r="4"/>`;
-    svg+=`<circle class="terminal-hot" data-endpoint="VDD" cx="${g.cx}" cy="${g.vddY}" r="16"/>`;
 
     svg+=`<line class="rail" x1="45" y1="${g.vyY}" x2="${g.W-45}" y2="${g.vyY}"/>`;
     svg+=`<circle class="terminal fixed" data-endpoint="VY" cx="${g.cx}" cy="${g.vyY}" r="4"/>`;
-    svg+=`<circle class="terminal-hot" data-endpoint="VY" cx="${g.cx}" cy="${g.vyY}" r="16"/>`;
     svg+=`<text class="vy-tag" x="${g.W-38}" y="${g.vyY+4}">V\u1d67</text>`;
   }
+
+  // Invisible hit-lines that let a wire start anywhere on a rail.
+  railsForBuild().forEach(r=>{
+    svg+=`<line class="rail-hot" data-rail="${r.id}" x1="45" y1="${r.y}" x2="${g.W-45}" y2="${r.y}" stroke="transparent" stroke-width="20" fill="none"/>`;
+  });
 
   // existing wires
   cmos.wires.forEach(w=>{
@@ -751,14 +997,17 @@ function renderCmosCanvas(){
   cmos.devices.forEach(d=>{
     const selected=cmos.selected?.type==="device" && cmos.selected.id===d.id;
     svg+=`<g class="schem-device${selected?" selected":""}" data-device="${d.id}">`;
-    svg+=`<rect class="device-select-ring" x="${d.x-39}" y="${d.y-31}" width="78" height="62" rx="8"/>`;
+    svg+=`<rect class="device-select-ring" x="${d.x-42}" y="${d.y-32}" width="84" height="64" rx="9"/>`;
     svg+=glyph(d.x,d.y,d,d.name);
-    svg+=`<rect fill="transparent" x="${d.x-36}" y="${d.y-27}" width="72" height="54" rx="7"/>`;
+    // Wide, tall transparent grab area so the transistor is easy to select.
+    // Terminal hot-zones are drawn AFTER this and sit on top near x=cx, so the
+    // node points keep priority; the body is grabbable everywhere else.
+    svg+=`<rect class="device-hit" fill="transparent" x="${d.x-44}" y="${d.y-28}" width="88" height="56" rx="8"/>`;
     svg+=`</g>`;
 
-    svg+=`<circle class="terminal" data-endpoint="${d.id}:top" cx="${d.x}" cy="${d.y-22}" r="3.4"/>`;
+    svg+=`<circle class="terminal${tgt(d.id+":top")}" data-endpoint="${d.id}:top" cx="${d.x}" cy="${d.y-22}" r="3.4"/>`;
     svg+=`<circle class="terminal-hot" data-endpoint="${d.id}:top" cx="${d.x}" cy="${d.y-22}" r="16"/>`;
-    svg+=`<circle class="terminal" data-endpoint="${d.id}:bottom" cx="${d.x}" cy="${d.y+22}" r="3.4"/>`;
+    svg+=`<circle class="terminal${tgt(d.id+":bottom")}" data-endpoint="${d.id}:bottom" cx="${d.x}" cy="${d.y+22}" r="3.4"/>`;
     svg+=`<circle class="terminal-hot" data-endpoint="${d.id}:bottom" cx="${d.x}" cy="${d.y+22}" r="16"/>`;
   });
 
@@ -774,233 +1023,171 @@ function renderCmosCanvas(){
   });
 
   cmos.junctions.forEach(j=>{
-    const selected=cmos.selected?.type==="junction" && cmos.selected.id===j.id;
+    const selected=(cmos.selected?.type==="junction" && cmos.selected.id===j.id) || snapId===j.id;
     svg+=`<circle class="terminal${selected?" snap-target":""}" data-endpoint="${j.id}" cx="${j.x}" cy="${j.y}" r="3.8"/>`;
     svg+=`<circle class="terminal-hot junction-hot" data-endpoint="${j.id}" data-junction="${j.id}" cx="${j.x}" cy="${j.y}" r="16"/>`;
   });
 
-  if(!cmos.devices.length){
-    svg+=`<text class="schem-empty-note" x="${g.cx}" y="${(g.workTop+g.workBottom)/2}" text-anchor="middle">Drag a transistor here</text>`;
+  if(!cmos.devices.length && !(cmos.drag && cmos.drag.mode==="place") && !cmos.armed){
+    svg+=`<text class="schem-empty-note" x="${g.cx}" y="${(g.workTop+g.workBottom)/2}" text-anchor="middle">Drag or click a transistor here</text>`;
   }
 
   if(!isPullDown){
     svg+=givenDraw.svg;
   }
 
+  // ---- live previews (drawn on top) ----
+  const ghostAt=(x,y,kind,op)=>`<g class="schem-ghost" style="opacity:${op};pointer-events:none">`+
+    glyph(x,y,{kind,gate:cmos.tool.gate},(p.build==="pulldown"?"N":"P")+cmos.nextTrans)+`</g>`;
+
+  if(cmos.drag && cmos.drag.mode==="place" && cmos.drag.inside && cmos.drag.x!=null){
+    svg+=ghostAt(cmos.drag.x,cmos.drag.y,cmos.drag.kind,".5");
+  }
+  if(cmos.armed && cmos.armedHover){
+    svg+=ghostAt(cmos.armedHover.x,cmos.armedHover.y,cmos.armed,".45");
+  }
+
+  if(cmos.wiring){
+    const from=cmos.wiring.fromPos || endpointPosition(cmos.wiring.from);
+    const to=cmos.wiring.cursor||from;
+    if(from && to) svg+=`<path class="schem-preview" style="pointer-events:none" d="${orthogonalPath(from,to)}"/>`;
+    if(cmos.wiring.snap && (cmos.wiring.snap.type==="wire" || cmos.wiring.snap.type==="rail")){
+      const pt=cmos.wiring.snap.point;
+      svg+=`<circle class="schem-junction" style="pointer-events:none" cx="${pt.x}" cy="${pt.y}" r="3.6"/>`;
+    }
+  }
+
   svg+=`</svg>`;
 
   const host=document.getElementById("cmos-canvas");
+  const prevTop=host.scrollTop, prevLeft=host.scrollLeft;
   host.classList.add("editor");
   host.innerHTML=svg;
+  host.scrollTop=prevTop; host.scrollLeft=prevLeft;   // never jump on re-render
 
   const svgEl=host.querySelector("svg");
+  if(!svgEl) return;
 
-  function clientToSvg(clientX,clientY){
-    const pt=svgEl.createSVGPoint();
-    pt.x=clientX; pt.y=clientY;
-    const p=pt.matrixTransform(svgEl.getScreenCTM().inverse());
-    return {x:p.x,y:p.y};
-  }
-
-  // Palette drop -> new transistor.
-  host.ondragover=e=>{
-    e.preventDefault();
-    e.dataTransfer.dropEffect="copy";
-  };
-
-  host.ondrop=e=>{
-    e.preventDefault();
-    let payload=null;
-    try{ payload=JSON.parse(e.dataTransfer.getData("application/json")); }catch{}
-    if(!payload) return;
-    const pnt=clientToSvg(e.clientX,e.clientY);
-    addSchematicDevice(payload.kind,payload.gate,pnt.x,pnt.y);
-  };
-
-  // Select / drag devices.
-  host.querySelectorAll(".schem-device").forEach(el=>{
-    el.addEventListener("pointerdown",e=>{
-      if(e.button!==0) return;
+  // Device body: select + begin a move gesture.
+  host.querySelectorAll(".schem-device").forEach(gEl=>{
+    gEl.style.touchAction="none";
+    gEl.addEventListener("pointerdown",e=>{
+      if(e.pointerType==="mouse" && e.button!==0) return;
       e.preventDefault();
-      const id=el.dataset.device;
+      e.stopPropagation();
+      cmos.armed=null; cmos.armedHover=null;
+      const id=gEl.dataset.device;
       const d=cmos.devices.find(x=>x.id===id);
       if(!d) return;
-
+      const pnt=cmosClientToSvg(e.clientX,e.clientY)||{x:d.x,y:d.y};
       cmos.selected={type:"device",id};
-      const pnt=clientToSvg(e.clientX,e.clientY);
-      cmos.drag={id,dx:d.x-pnt.x,dy:d.y-pnt.y,moved:false};
-
-      el.setPointerCapture(e.pointerId);
-      renderCmosToolbar();
-    });
-
-    el.addEventListener("pointermove",e=>{
-      if(!cmos.drag || cmos.drag.id!==el.dataset.device) return;
-      const d=cmos.devices.find(x=>x.id===cmos.drag.id);
-      if(!d) return;
-
-      const pnt=clientToSvg(e.clientX,e.clientY);
-      const nx=snapGrid(Math.max(55,Math.min(g.W-55,pnt.x+cmos.drag.dx)));
-      const ny=snapGrid(Math.max(g.workTop+26,Math.min(g.workBottom-26,pnt.y+cmos.drag.dy)));
-
-      if(Math.abs(nx-d.x)>1 || Math.abs(ny-d.y)>1) cmos.drag.moved=true;
-      d.x=nx; d.y=ny;
-
-      // Update just the geometry by re-rendering.
-      renderCmosCanvas();
-    });
-
-    el.addEventListener("pointerup",e=>{
-      if(cmos.drag && cmos.drag.id===el.dataset.device){
-        cmos.drag=null;
-        cmos.verdict=null;
-        renderCmosToolbar();
-        renderCmosCanvas();
-        renderCmosTable();
-        document.getElementById("cmos-feedback-card").style.display="none";
-      }
-    });
-
-    el.addEventListener("click",e=>{
-      e.stopPropagation();
-      cmos.selected={type:"device",id:el.dataset.device};
+      cmos.drag={mode:"move",id,dx:d.x-pnt.x,dy:d.y-pnt.y,moved:false};
+      cmosBeginGesture();
       renderCmosToolbar();
       renderCmosCanvas();
     });
   });
 
-  // Select wires.
-  host.querySelectorAll(".schem-wire-hit").forEach(el=>{
-    el.addEventListener("click",e=>{
-      e.stopPropagation();
-      cmos.selected={type:"wire",id:el.dataset.wire};
-      renderCmosToolbar();
-      renderCmosCanvas();
-    });
-
-    el.addEventListener("dblclick",e=>{
+  // Terminals: begin a wiring gesture.
+  host.querySelectorAll(".terminal-hot").forEach(term=>{
+    term.style.touchAction="none";
+    term.addEventListener("pointerdown",e=>{
+      if(e.pointerType==="mouse" && e.button!==0) return;
       e.preventDefault();
       e.stopPropagation();
-      const pnt=clientToSvg(e.clientX,e.clientY);
-      const id=createJunctionOnWire(el.dataset.wire,pnt);
-      if(id && id.startsWith("j")){
-        cmos.selected={type:"junction",id};
-        cmos.verdict=null;
-      }
-      renderCmosToolbar();
+      cmos.armed=null; cmos.armedHover=null;
+      const endpoint=term.dataset.endpoint;
+      const from=endpointPosition(endpoint);
+      if(!from) return;
+      cmos.wiring={from:endpoint,fromRail:null,fromPos:from,cursor:from,snap:null};
+      cmosBeginGesture();
       renderCmosCanvas();
-      renderCmosTable();
-      document.getElementById("cmos-feedback-card").style.display="none";
     });
   });
 
+  // Rails: begin a wiring gesture from any point along the line.
+  host.querySelectorAll(".rail-hot").forEach(line=>{
+    line.style.touchAction="none";
+    line.addEventListener("pointerdown",e=>{
+      if(e.pointerType==="mouse" && e.button!==0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      cmos.armed=null; cmos.armedHover=null;
+      const railId=line.dataset.rail;
+      const pnt=cmosClientToSvg(e.clientX,e.clientY);
+      const gg=cmosGeom();
+      const y = railId==="VDD"?gg.vddY : gg.vyY;
+      const x = snapGrid(Math.max(45,Math.min(gg.W-45, pnt?pnt.x:gg.cx)));
+      const from={x,y};
+      cmos.wiring={from:railId,fromRail:railId,fromPos:from,cursor:from,snap:null};
+      cmosBeginGesture();
+      renderCmosCanvas();
+    });
+  });
+
+  // Tap a junction to select it.
   host.querySelectorAll(".junction-hot").forEach(el=>{
     el.addEventListener("click",e=>{
       e.stopPropagation();
+      if(cmos.drag || cmos.wiring) return;
       cmos.selected={type:"junction",id:el.dataset.junction};
       renderCmosToolbar();
       renderCmosCanvas();
     });
   });
 
-  // Wire creation by dragging terminal -> terminal.
-  // The visible circles stay small, but snapping works within a generous radius.
-  host.querySelectorAll(".terminal-hot").forEach(term=>{
-    term.addEventListener("pointerdown",e=>{
-      if(e.button!==0) return;
-      e.preventDefault();
+  // Tap a wire to select it.
+  host.querySelectorAll(".schem-wire-hit").forEach(el=>{
+    el.addEventListener("click",e=>{
       e.stopPropagation();
-
-      const endpoint=term.dataset.endpoint;
-      const from=endpointPosition(endpoint);
-      if(!from) return;
-
-      cmos.wiring={from:endpoint,snap:null};
-      term.setPointerCapture(e.pointerId);
-
-      let preview=svgEl.querySelector(".schem-preview");
-      if(!preview){
-        preview=document.createElementNS("http://www.w3.org/2000/svg","path");
-        preview.setAttribute("class","schem-preview");
-        svgEl.appendChild(preview);
-      }
-
-      function clearSnapVisual(){
-        svgEl.querySelectorAll(".terminal.snap-target").forEach(n=>n.classList.remove("snap-target"));
-      }
-
-      function setSnapVisual(id){
-        clearSnapVisual();
-        if(!id) return;
-        svgEl.querySelectorAll(`.terminal[data-endpoint="${id}"]`).forEach(n=>n.classList.add("snap-target"));
-      }
-
-      const move=ev=>{
-        if(!cmos.wiring) return;
-
-        const pnt=clientToSvg(ev.clientX,ev.clientY);
-        const snap=nearestEndpoint(pnt,endpoint,28);
-        const wireSnap=snap ? null : nearestWire(pnt,null,18);
-
-        cmos.wiring.snap=snap ? {type:"endpoint",id:snap.id} :
-          wireSnap ? {type:"wire",id:wireSnap.wire.id,point:{x:wireSnap.x,y:wireSnap.y}} : null;
-
-        setSnapVisual(snap ? snap.id : null);
-
-        const end=snap ? snap.pos :
-          wireSnap ? {x:wireSnap.x,y:wireSnap.y} :
-          pnt;
-
-        preview.setAttribute("d",orthogonalPath(from,end));
-      };
-
-      const finish=ev=>{
-        term.removeEventListener("pointermove",move);
-        term.removeEventListener("pointerup",finish);
-        term.removeEventListener("pointercancel",cancel);
-
-        const pnt=clientToSvg(ev.clientX,ev.clientY);
-        const snap=nearestEndpoint(pnt,endpoint,28);
-        const wireSnap=snap ? null : nearestWire(pnt,null,18);
-        const saved=cmos.wiring?.snap;
-
-        clearSnapVisual();
-        cmos.wiring=null;
-
-        if(snap && snap.id!==endpoint){
-          addWire(endpoint,snap.id);
-        } else if(wireSnap){
-          connectEndpointToWire(endpoint,wireSnap.wire.id,{x:wireSnap.x,y:wireSnap.y});
-        } else if(saved?.type==="endpoint" && saved.id!==endpoint){
-          addWire(endpoint,saved.id);
-        } else if(saved?.type==="wire"){
-          connectEndpointToWire(endpoint,saved.id,saved.point);
-        } else {
-          renderCmosCanvas();
-        }
-      };
-
-      const cancel=()=>{
-        term.removeEventListener("pointermove",move);
-        term.removeEventListener("pointerup",finish);
-        term.removeEventListener("pointercancel",cancel);
-        clearSnapVisual();
-        cmos.wiring=null;
-        renderCmosCanvas();
-      };
-
-      term.addEventListener("pointermove",move);
-      term.addEventListener("pointerup",finish);
-      term.addEventListener("pointercancel",cancel);
+      if(cmos.drag || cmos.wiring) return;
+      cmos.selected={type:"wire",id:el.dataset.wire};
+      renderCmosToolbar();
+      renderCmosCanvas();
     });
   });
 
-  svgEl.addEventListener("click",()=>{
-    if(!cmos.wiring){
-      cmos.selected=null;
-      renderCmosToolbar();
+  // Hover ghost while armed for click-to-place (mouse only).
+  svgEl.addEventListener("pointermove",e=>{
+    if(!cmos.armed || cmos.drag || cmos.wiring) return;
+    const pnt=cmosClientToSvg(e.clientX,e.clientY);
+    if(!pnt) return;
+    if(!cmosInsideSheet(pnt)){
+      if(cmos.armedHover){ cmos.armedHover=null; renderCmosCanvas(); }
+      return;
+    }
+    const gg=cmosGeom();
+    const x=snapGrid(Math.max(55,Math.min(gg.W-55,pnt.x)));
+    const y=snapGrid(Math.max(gg.workTop+26,Math.min(gg.workBottom-26,pnt.y)));
+    if(!cmos.armedHover || cmos.armedHover.x!==x || cmos.armedHover.y!==y){
+      cmos.armedHover={x,y};
       renderCmosCanvas();
     }
+  });
+
+  // Click on the sheet: place (if armed) or deselect.
+  svgEl.addEventListener("click",e=>{
+    if(cmos.drag || cmos.wiring) return;
+
+    if(cmos.armed){
+      if(e.target.closest("[data-device],[data-endpoint],[data-wire],[data-junction],[data-rail]")) return;
+      const pnt=cmosClientToSvg(e.clientX,e.clientY);
+      const kind=cmos.armed;
+      cmos.armed=null; cmos.armedHover=null;
+      if(cmosInsideSheet(pnt)){
+        addSchematicDevice(kind,cmos.tool.gate,pnt.x,pnt.y);
+      } else {
+        renderCmosToolbar();
+        renderCmosCanvas();
+      }
+      return;
+    }
+
+    if(e.target.closest("[data-device],[data-endpoint],[data-wire],[data-junction],.nodepill")) return;
+    if(!cmos.selected) return;
+    cmos.selected=null;
+    renderCmosToolbar();
+    renderCmosCanvas();
   });
 }
 
@@ -1043,14 +1230,16 @@ function renderCmosTable(){
   html+=`</tbody></table>`;
   const host=document.getElementById("cmos-table"); host.innerHTML=html;
   host.querySelectorAll("td.tcell").forEach(td=>td.addEventListener("click",()=>{
+    if(!cmos.simUnlocked) return;
     const ri=+td.dataset.ri, key=td.dataset.col, marks=cmos.table[ri].marks;
     if(marks.has(key)) marks.delete(key); else marks.add(key);
-    cmos.verdict=null; renderCmosTable(); document.getElementById("cmos-feedback-card").style.display="none";
+    cmos.verdict=null; renderCmosTable(); cmosHideTableFeedback();
   }));
   host.querySelectorAll("td.vy").forEach(td=>td.addEventListener("click",()=>{
+    if(!cmos.simUnlocked) return;
     const ri=+td.dataset.ri, cur=cmos.table[ri].vy;
     cmos.table[ri].vy = cur===null?0 : cur===0?3.3 : null;   // cycle blank -> 0V -> 3.3V -> blank
-    cmos.verdict=null; renderCmosTable(); document.getElementById("cmos-feedback-card").style.display="none";
+    cmos.verdict=null; renderCmosTable(); cmosHideTableFeedback();
   }));
 }
 
@@ -1223,3 +1412,231 @@ function showCmosFeedback(msgs){
 }
 
 function cmosReset(){ buildCmos(cmos.p); }
+
+/* Delete / Backspace removes the selected item while the CMOS solver is open. */
+if(!window.__cmosKeyBound){
+  window.__cmosKeyBound=true;
+  window.addEventListener("keydown",e=>{
+    if(e.key!=="Delete" && e.key!=="Backspace") return;
+    const view=document.getElementById("solver-cmos");
+    if(!view || view.style.display==="none") return;
+    const t=e.target;
+    const tag=(t && t.tagName || "").toLowerCase();
+    if(tag==="input" || tag==="textarea" || (t && t.isContentEditable)) return;
+    if(!cmos.selected) return;
+    e.preventDefault();
+    deleteSelectedSchematicItem();
+  });
+}
+
+/* ============================================================
+   Feedback: separate BUILD and TABLE submits
+   ============================================================ */
+
+/* -- visibility helpers -- */
+function cmosHideTableFeedback(){
+  const c=document.getElementById("cmos-feedback-card");
+  if(c) c.style.display="none";
+  const sim=document.getElementById("cmos-sim-card");
+  if(sim) sim.classList.remove("is-correct");
+  const actions=document.getElementById("cmos-complete-actions");
+  if(actions) actions.style.display="none";
+}
+function cmosHideFeedback(){
+  // A structural change to the circuit invalidates the build verdict, hides the
+  // "Continue" option, and collapses the Simulate stage back out of view — the
+  // table only makes sense against a circuit that has been verified.
+  cmosHideTableFeedback();
+  const bc=document.getElementById("cmos-build-feedback-card");
+  if(bc) bc.style.display="none";
+  const card=document.getElementById("cmos-build-card");
+  if(card) card.classList.remove("is-correct");
+  cmos.buildPassed=false;
+  cmos.simUnlocked=false;
+  cmos.verdict=null;
+  cmosUpdateSimGate();
+}
+
+/* Reflect the Build→Simulate progression in the DOM:
+   - not passed         → Simulate hidden, no Continue button
+   - passed, not moved  → Simulate hidden, Continue button shown
+   - moved on           → Simulate revealed (table interactive) */
+function cmosUpdateSimGate(){
+  const passed=!!cmos.buildPassed;
+  const revealed=!!cmos.simUnlocked;
+  const build=document.getElementById("cmos-build-card");
+  const sim=document.getElementById("cmos-sim-card");
+  const cont=document.getElementById("cmos-continue");
+  const btn=document.getElementById("cmos-check-table-btn");
+  const question=document.getElementById("solve-question");
+  if(build) build.style.display = revealed ? "none" : "";
+  if(sim) sim.style.display = revealed ? "" : "none";
+  if(cont) cont.style.display = (passed && !revealed) ? "" : "none";
+  if(btn) btn.disabled = !revealed;
+  if(question) question.style.display = (!revealed && cmos.questionWasVisible) ? "" : "none";
+  if(!revealed) cmosHideTableFeedback();
+}
+
+/* Copy the verified schematic into the simulation stage as a clean,
+   non-interactive reference image. */
+function cmosRenderReferenceDiagram(){
+  const source=document.querySelector("#cmos-canvas .schem-svg");
+  const host=document.getElementById("cmos-reference-canvas");
+  if(!source || !host) return;
+
+  const snapshot=source.cloneNode(true);
+  snapshot.classList.remove("armed");
+  snapshot.classList.add("reference-svg");
+  snapshot.removeAttribute("width");
+  snapshot.removeAttribute("height");
+  snapshot.setAttribute("aria-hidden","true");
+
+  snapshot.querySelectorAll(
+    ".schem-grid-dot, .terminal-hot, .rail-hot, .schem-wire-hit, " +
+    ".device-select-ring, .schem-empty-note, .schem-preview, .schem-ghost"
+  ).forEach(el=>el.remove());
+  snapshot.querySelectorAll(".selected, .snap-target, .dragging")
+    .forEach(el=>el.classList.remove("selected","snap-target","dragging"));
+
+  host.replaceChildren(snapshot);
+}
+
+/* -- renderer shared by both panels -- */
+function cmosRenderMsgs(hostId,cardId,areaLabel,msgs){
+  const host=document.getElementById(hostId);
+  if(!host) return;
+  host.innerHTML="";
+  const tags={error:"Fix",warn:"Nudge",success:"Solved",info:"Note"};
+  msgs.forEach(mo=>{
+    const d=document.createElement("div");
+    d.className="msg "+mo.s;
+    const tag=tags[mo.s]||"";
+    const heading=[areaLabel,tag].filter(Boolean).join(" \u00b7 ");
+    d.innerHTML=`<span class="mtag">${heading}</span>${mo.t}${mo.extra||""}`;
+    host.appendChild(d);
+  });
+  const card=document.getElementById(cardId);
+  if(card) card.style.display="block";
+}
+function showCmosBuildFeedback(msgs){ cmosRenderMsgs("cmos-build-feedback","cmos-build-feedback-card","Build the circuit",msgs); }
+function showCmosTableFeedback(msgs){ cmosRenderMsgs("cmos-feedback","cmos-feedback-card","Simulate your circuit",msgs); }
+
+/* -- BUILD: schematic / wiring only -- */
+function cmosCheckBuild(){
+  const p=cmos.p, rows=cmosInputRows(p), P=placedPullup(), msgs=[];
+  const buildingPullDown=p.build==="pulldown";
+  const expectedKind=buildingPullDown?"nmos":"pmos";
+  const expectedLabel=buildingPullDown?"pull-down":"pull-up";
+  const card=document.getElementById("cmos-build-card");
+
+  if(P.length===0){
+    if(card) card.classList.remove("is-correct");
+    showCmosBuildFeedback([{s:"info",t:`Drag transistors onto the schematic and wire the ${expectedLabel} network, then check again.`}]);
+    return;
+  }
+
+  const wrongType=P.filter(o=>o.t.kind!==expectedKind);
+  if(wrongType.length) msgs.push({s:"error",t:`The ${expectedLabel} network must use ${buildingPullDown?"NMOS":"PMOS"} transistors. ${wrongType.map(o=>o.name).join(", ")} ${wrongType.length===1?"has":"have"} the wrong type.`});
+
+  const connectedIds=new Set();
+  cmos.wires.forEach(w=>{ [w.a,w.b].forEach(ep=>{ if(ep.includes(":")) connectedIds.add(ep.split(":")[0]); }); });
+  const disconnected=P.filter(o=>!connectedIds.has(o.id));
+  if(disconnected.length) msgs.push({s:"warn",t:`${disconnected.map(o=>o.name).join(", ")} ${disconnected.length===1?"is":"are"} not wired into the schematic yet.`});
+
+  let short=null, flt=null, complement=true;
+  rows.forEach(a=>{ const s=simRow(p,a); if(s.vy==="SHORT"&&!short)short=a; if(s.vy==="FLOAT"&&!flt)flt=a; if(s.up===s.dn)complement=false; });
+  const inStr=a=>p.inputs.map(g=>`${g}=${fmtV(a[g])}`).join(", ");
+  if(short) msgs.push({s:"error",t:`Both networks conduct at (${inStr(short)}) — that shorts VDD to ground. Recheck your wiring.`});
+  if(flt) msgs.push({s:"error",t:`Neither network conducts at (${inStr(flt)}) — V\u1d67 floats. Every input combination must connect V\u1d67 to VDD or ground.`});
+
+  const usage={}; P.forEach(o=>usage[o.t.gate]=(usage[o.t.gate]||0)+1);
+  const missing=p.inputs.filter(g=>!usage[g]);
+
+  const designOK = !wrongType.length && !disconnected.length && !short && !flt && complement;
+
+  if(!designOK && missing.length) msgs.push({s:"warn",t:`Input${missing.length>1?"s":""} ${missing.join(", ")} ${missing.length>1?"are":"is"} not controlling any transistor yet.`});
+
+  if(designOK){
+    msgs.push({s:"success",t:`Your ${expectedLabel} network correctly complements the given ${buildingPullDown?"pull-up":"pull-down"} network. Press <b>Continue to simulation</b> below to move on.`});
+  } else if(!short && !flt && !wrongType.length && !disconnected.length && !complement){
+    msgs.push({s:"warn",t:`The ${expectedLabel} conducts for the wrong inputs. Recheck which transistors should be in series and which should share the same two nodes in parallel.`});
+  }
+
+  if(card) card.classList.toggle("is-correct", !!designOK);
+
+  // Gate stage 2: a correct build reveals the "Continue" option. It does NOT
+  // auto-open the table — the student chooses to move on.
+  cmos.buildPassed=!!designOK;
+  if(!designOK){ cmos.simUnlocked=false; cmos.verdict=null; }
+  cmosUpdateSimGate();
+
+  showCmosBuildFeedback(msgs);
+}
+
+/* Move on to the Simulate stage (reveals the table below the finished diagram). */
+function cmosContinueToSim(){
+  if(!cmos.buildPassed) return;
+  cmosRenderReferenceDiagram();
+  cmos.simUnlocked=true;
+  cmosUpdateSimGate();
+  const sim=document.getElementById("cmos-sim-card");
+  if(sim && sim.scrollIntoView) sim.scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
+/* Step back to editing the circuit (collapses the Simulate stage again). */
+function cmosBackToBuild(){
+  cmos.simUnlocked=false;
+  cmosUpdateSimGate();
+  const b=document.getElementById("cmos-build-card");
+  if(b && b.scrollIntoView) b.scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
+/* Reuse the chapter breadcrumb's existing navigation, so this remains in sync
+   with whichever chapter owns the current CMOS problem. */
+function cmosExploreMoreProblems(){
+  const chapterButton=document.getElementById("crumb-back-chapter");
+  if(chapterButton) chapterButton.click();
+}
+
+/* -- TABLE: simulation marks + Vy -- */
+function cmosCheckTable(){
+  if(!cmos.simUnlocked) return;   // gated on a correct build
+  const p=cmos.p, rows=cmosInputRows(p), P=placedPullup(), given=givenTransistors(p.given);
+  cmos.verdict=true;
+  let wrong=0, total=0;
+
+  rows.forEach((a,ri)=>{
+    const sim=simRow(p,a);
+    P.forEach(o=>{ total++; if(cmos.table[ri].marks.has(o.name)!==transOn(o.t,a)) wrong++; });
+    given.forEach(t=>{ total++; if(cmos.table[ri].marks.has(t.name)!==transOn(t,a)) wrong++; });
+    total++;
+    const vy=cmos.table[ri].vy, expVy=sim.vy;
+    if(typeof expVy==="number"){ if(vy!==expVy) wrong++; } else if(vy!==null){ wrong++; }
+  });
+
+  renderCmosTable();
+
+  const msgs=[];
+  const solved=wrong===0;
+  const simCard=document.getElementById("cmos-sim-card");
+  const completeActions=document.getElementById("cmos-complete-actions");
+  if(simCard) simCard.classList.toggle("is-correct", solved);
+  if(completeActions) completeActions.style.display=solved ? "flex" : "none";
+  if(solved){
+    msgs.push({
+      s:"success",
+      t:"Every closed-transistor mark and every V\u1d67 value matches your circuit.",
+      extra:`<div><span class="fb-count good">${total}/${total} correct</span></div>`
+    });
+  } else {
+    msgs.push({
+      s:"warn",
+      t:"Some cells don't match your circuit yet — the mismatches are outlined in red in the table above.",
+      extra:`<div><span class="fb-count bad">${wrong} cell${wrong===1?"":"s"} to fix</span></div>`
+    });
+  }
+  showCmosTableFeedback(msgs);
+}
+
+/* Convenience: check both panels at once. */
+function cmosCheckAll(){ cmosCheckBuild(); cmosCheckTable(); }
