@@ -1,6 +1,6 @@
 /* ============================================================
    SWITCH-LEVEL ANALYSIS TYPE  —  netlist solver + toggleable
-   switch diagram + feedback
+   switch diagram + path reveal + feedback
 
    Staged flow: the input combinations are worked one at a time, in order
    (input1 = 0, input2 = 0 → input1 = 1, input2 = 0 → …). A stage must be
@@ -8,7 +8,7 @@
    green and swaps "Submit" for "Next / Previous". After the last stage the
    only actions are "Explore more problems / Previous".
    ============================================================ */
-const sw = { p:null, net:null, rows:[], inV:{}, ans:[], verdict:null, stage:0, completed:null };
+const sw = { p:null, net:null, rows:[], inV:{}, ans:[], showPath:false, verdict:null, stage:0, completed:null };
 
 /* -- general switch-level solver: iterate node voltages to a fixed point -- */
 function swStates(net, V){
@@ -34,6 +34,16 @@ function solveNet(net, fixedV){
   }
   return { V, st:swStates(net,V) };
 }
+/* connectivity implied by the student's asserted closed switches (for path reveal) */
+function swRevealInfo(closed){
+  const net=sw.net, parent={}; net.nodes.forEach(n=>parent[n]=n);
+  const find=x=>{ while(parent[x]!==x){ parent[x]=parent[parent[x]]; x=parent[x]; } return x; };
+  net.transistors.forEach(t=>{ if(closed.has(t.name)) parent[find(t.a)]=find(t.b); });
+  const rV=find("VDD"), rG=find("GND"), live=new Set();
+  net.transistors.forEach(t=>{ if(closed.has(t.name)){ const r=find(t.a); if(r===rV||r===rG) live.add(t.name); } });
+  return { live, node:n=>({toVDD:find(n)===rV, toGND:find(n)===rG}) };
+}
+
 /* Staged order: the FIRST input changes fastest, so a 2-input problem runs
    (0,0) → (1,0) → (0,1) → (1,1). */
 function swInputRows(p){
@@ -43,12 +53,16 @@ function swInputRows(p){
 }
 function swCurIndex(){ return sw.rows.findIndex(r=> sw.p.inputs.every(g=> r[g]===sw.inV[g])); }
 function vColor(v){ return v===3.3?"var(--g0)":v===0?"var(--g2)":null; }
+function netColor(reveal, netName){
+  if(!reveal) return null;
+  const c=reveal.node(netName);
+  return (c.toVDD&&c.toGND)?"var(--warn)":c.toVDD?"var(--g0)":c.toGND?"var(--g2)":null;
+}
 
 /* -- glyphs -- */
 function swGlyph(x,y,name,gate,kind,closed,liveCol,gateCol){
   const isPmos=kind==="pmos";
   const channelX=x-4;
-  const gateLabelY=gate==="Vx" ? y-8 : y+3;
 
   let s=`<g class="sw ${closed?"closed":"open"}">`;
 
@@ -72,7 +86,7 @@ function swGlyph(x,y,name,gate,kind,closed,liveCol,gateCol){
   }
 
   s+=`<text class="sname" x="${x+7}" y="${y-10}">${name}</text>`;
-  s+=`<text x="${x-34}" y="${gateLabelY}" text-anchor="end"${gateCol?` style="fill:${gateCol};font-weight:600"`:""}>${gate}</text>`;
+  s+=`<text x="${x-34}" y="${y+3}" text-anchor="end"${gateCol?` style="fill:${gateCol};font-weight:600"`:""}>${gate}</text>`;
   s+=`</g>`;
   return s;
 }
@@ -87,6 +101,7 @@ function buildSwitch(p){
   sw.p=p;
   sw.net={nodes:p.nodes, transistors:p.transistors};
   sw.rows=swInputRows(p);
+  sw.showPath=false;
   sw.verdict=null;
   sw.completed=new Set();
   sw.stage=0;
@@ -135,7 +150,7 @@ function swRenderActions(){
   } else if(isLast){
     html=`<button class="btn" type="button" onclick="swExploreMoreProblems()">Explore more problems &rarr;</button>${back}`;
   } else {
-    html=`<button class="btn next-success" type="button" onclick="swNext()">Next combination &rarr;</button>${back}`;
+    html=`<button class="btn" type="button" onclick="swNext()">Next combination &rarr;</button>${back}`;
   }
   host.innerHTML=html;
 }
@@ -149,49 +164,68 @@ function renderSwToolbar(){
     return `<span class="sw-step${done?" done":""}${cur?" current":""}">${done && !cur ? "\u2713" : (i+1)}</span>`;
   }).join("");
 
-  const inputsText=p.inputs.map(g=>{
-    const high=row[g]===3.3;
-    return `<span class="sw-input-chip ${high?"high":"low"}">
-      <span class="sw-input-name">${g}</span>
-      <span class="sw-input-equals">:</span>
-      <span class="sw-input-value">${fmtV(row[g])}</span>
-    </span>`;
-  }).join("");
+  const inputsText=p.inputs.map(g=>`${g} = ${fmtV(row[g])}`).join("\u00a0\u00a0·\u00a0\u00a0");
+
+  const legend = sw.showPath ? `<div class="sw-legend">
+      <span style="color:var(--g0)"><i></i>high · to VDD (3.3 V)</span>
+      <span style="color:var(--g2)"><i></i>low · to GND (0 V)</span>
+      <span style="color:var(--ok)"><i></i>closed switch (conducting)</span>
+    </div>` : "";
 
   host.innerHTML=`
     <div class="sw-toolrow">
       <div class="combo-select">
         <span class="tg-label">Combination ${s+1} of ${N}</span>
         <div class="sw-stagebar">${dots}</div>
-        <div class="sw-inputs-label">Current inputs</div>
         <div class="sw-stage-inputs">${inputsText}</div>
       </div>
+
+      <button
+        class="reveal-btn ${sw.showPath?"on":""}"
+        id="sw-reveal"
+        type="button">
+        <span class="reveal-dot"></span>
+        Show conducting path
+      </button>
     </div>
 
     <div class="sw-progress-inline">
       <b>${sw.completed.size}</b> of <b>${N}</b> combinations solved.
       <button class="sw-reset-link" id="sw-reset" type="button">Reset problem</button>
     </div>
+
+    ${legend}
   `;
+
+  document.getElementById("sw-reveal").onclick=()=>{
+    sw.showPath=!sw.showPath;
+    renderSwToolbar();
+    renderSwCanvas();
+  };
   const rb=document.getElementById("sw-reset");
   if(rb) rb.onclick=swReset;
 }
 
 function renderSwCanvas(){
   const p=sw.p, L=p.layout, cur=swCurIndex(), a=sw.ans[cur];
+  const reveal = sw.showPath ? swRevealInfo(a.closed) : null;
   const gateV = g => (g in sw.inV) ? sw.inV[g] : (g in a.V ? a.V[g] : null);
   let s=`<svg class="cell-svg" viewBox="0 0 ${L.w} ${L.h}" width="${L.w}" height="${L.h}" xmlns="http://www.w3.org/2000/svg">`;
-  s+=`<line class="rail" x1="${L.vddX[0]}" y1="${L.vddY}" x2="${L.vddX[1]}" y2="${L.vddY}"/>`;
+  const vddCol = reveal ? "var(--g0)" : null;
+  s+=`<line class="rail" x1="${L.vddX[0]}" y1="${L.vddY}" x2="${L.vddX[1]}" y2="${L.vddY}"${vddCol?` style="stroke:${vddCol}"`:""}/>`;
   s+=`<text class="pwr-tag" x="${L.vddX[1]}" y="${L.vddY-8}" text-anchor="end">VDD = 3.3V</text>`;
-  L.wires.forEach(w=>{ s+=`<polyline class="wire" fill="none" points="${w.p.map(pt=>pt.join(",")).join(" ")}"/>`; });
-  L.grounds.forEach(g=>{ s+=gndSym(g.x,g.y,null); });
+  L.wires.forEach(w=>{ const col=netColor(reveal,w.n); s+=`<polyline class="wire" fill="none" points="${w.p.map(pt=>pt.join(",")).join(" ")}"${col?` style="stroke:${col};stroke-width:3"`:""}/>`; });
+  L.grounds.forEach(g=>{ s+=gndSym(g.x,g.y, reveal?"var(--g2)":null); });
   for(const name in L.trans){
     const tl=L.trans[name], t=sw.net.transistors.find(t=>t.name===name), closed=a.closed.has(name);
-    s+=swGlyph(tl.x,tl.y,name,t.gate,t.kind,closed,null,vColor(gateV(t.gate)));
+    const liveCol=(reveal && closed && reveal.live.has(name)) ? "var(--ok)" : null;
+    s+=swGlyph(tl.x,tl.y,name,t.gate,t.kind,closed,liveCol,vColor(gateV(t.gate)));
     s+=`<rect class="sw-hit" data-name="${name}" x="${tl.x-24}" y="${tl.y-26}" width="48" height="52"/>`;
   }
   L.nodes.forEach(nd=>{
-    s+=nodePill(nd.x,nd.y,nd.node,a.V[nd.node],null);
+    let ring=null;
+    if(reveal){ const c=reveal.node(nd.node); ring=(c.toVDD&&c.toGND)?"var(--warn)":c.toVDD?"var(--g0)":c.toGND?"var(--g2)":"var(--muted)"; }
+    s+=nodePill(nd.x,nd.y,nd.node,a.V[nd.node],ring);
   });
   s+=`</svg>`;
   const host=document.getElementById("sw-canvas"); host.innerHTML=s;

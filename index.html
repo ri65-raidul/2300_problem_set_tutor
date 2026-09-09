@@ -30,6 +30,10 @@
           <h1>Practice by topic</h1>
           <p>Select a course topic, complete the problem directly in your browser, and check your answer for immediate feedback.</p>
           <a class="study-start" href="#topic-library">Browse course topics <span aria-hidden="true">&darr;</span></a>
+          <div class="study-note">
+            <span class="study-badge">Early prototype</span>
+            <span>This site is a <b>very early prototype</b> and may have rough edges. Run into a bug or something that looks off? <a class="study-buglink" href="https://docs.google.com/forms/d/e/1FAIpQLScaCd18pHnw2FoNyZTLftFw45cJ0mOy9vXjNFtk1V1Siu_jEg/viewform" target="_blank" rel="noopener">Report it here &rarr;</a></span>
+          </div>
         </div>
 
         <div class="study-guide" aria-label="Using the problem sets">
@@ -233,6 +237,45 @@
       </div>
     </div>
 
+    <!-- TYPE: GATE-LEVEL TRUTH TABLE -->
+    <div id="solver-gate" style="display:none;">
+      <div class="card gate-workspace" id="gate-workspace">
+        <div class="workspace-heading">
+          <span class="workspace-number">01</span>
+          <div>
+            <div class="workspace-title">Complete the truth table</div>
+            <div class="workspace-desc">Click each X and Y cell to select 0 or 1 for every input combination.</div>
+          </div>
+        </div>
+
+        <div class="gate-layout">
+          <div class="gate-network">
+            <div class="gate-section-label">Gate-level network</div>
+            <div id="gate-diagram"></div>
+          </div>
+          <div class="gate-table-wrap">
+            <div class="gate-section-label">Truth table</div>
+            <div id="gate-table"></div>
+          </div>
+        </div>
+
+        <div class="btn-row gate-actions" id="gate-actions">
+          <button class="btn" type="button" onclick="gateCheck()">Check table</button>
+          <button class="btn ghost" type="button" onclick="gateReset()">Reset</button>
+        </div>
+
+        <div class="card gate-feedback-card" id="gate-feedback-card" style="display:none;">
+          <h3>Feedback</h3>
+          <div class="feedback" id="gate-feedback"></div>
+        </div>
+
+        <div class="gate-complete-actions" id="gate-complete-actions" style="display:none;">
+          <span class="gate-complete-msg">Solved. This problem is complete.</span>
+          <button class="btn" type="button" onclick="gateExploreMoreProblems()">Explore more problems &rarr;</button>
+        </div>
+      </div>
+    </div>
+
     <!-- TYPE: TIMING DIAGRAM -->
     <div id="solver-timing" style="display:none;">
       <div class="timing-wrap">
@@ -285,6 +328,7 @@
 <script src="js/cmos.js"></script>
 <script src="js/timing.js"></script>
 <script src="js/switch.js"></script>
+<script src="js/gate.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

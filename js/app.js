@@ -102,6 +102,7 @@ function problemSubtitle(p){
   if(p.type==="cmos") return `CMOS · complete the ${p.build==="pullup"?"pull-up":"pull-down"} network`;
   if(p.type==="switch") return `Switch-level · trace closed/open switches`;
   if(p.type==="timing") return `Timing diagram`;
+  if(p.type==="gate") return `Gate-level · complete the truth table`;
   return fnString(p);
 }
 function currentProblem(){ return PROBLEMS.find(p=>p.id===state.problemId); }
@@ -122,7 +123,8 @@ function buildSolver(id){
     kmap:document.getElementById("solver-kmap"),
     cmos:document.getElementById("solver-cmos"),
     sw:document.getElementById("solver-switch"),
-    timing:document.getElementById("solver-timing")
+    timing:document.getElementById("solver-timing"),
+    gate:document.getElementById("solver-gate")
   };
   Object.values(views).forEach(v=>v.style.display="none");
 
@@ -153,6 +155,13 @@ function buildSolver(id){
     fn.style.display="none";
     views.timing.style.display="block";
     buildTiming(p);
+  } else if(p.type==="gate"){
+    document.getElementById("solve-eyebrow").textContent="";
+    question.style.display="block";
+    prompt.textContent=p.prompt;
+    fn.style.display="none";
+    views.gate.style.display="block";
+    buildGateProblem(p);
   } else {
     document.getElementById("solve-eyebrow").textContent=`Karnaugh map · ${p.variables.length} variables`;
     question.style.display="none";

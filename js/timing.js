@@ -147,107 +147,89 @@ function renderTimingCircuit(){
   const norDelay = showConst?TDELAY.nor:null;
 
   const svg = `
-    <svg class="timing-circuit-svg" viewBox="0 0 760 285" xmlns="http://www.w3.org/2000/svg">
-      <line class="timing-circuit-wire" x1="95" y1="28" x2="245" y2="28"/>
-      <text class="timing-circuit-label" x="102" y="20">VDD</text>
+    <svg class="timing-circuit-svg" viewBox="0 0 760 300" role="img"
+      aria-label="A CMOS inverter driven by Va produces Vx. Vx and Vb drive a CMOS NOR gate that produces Vy."
+      xmlns="http://www.w3.org/2000/svg">
 
-      <line class="timing-circuit-wire" x1="170" y1="28" x2="170" y2="58"/>
-      <path class="timing-circuit-trans" d="M 170 58 L 170 64 L 165 64 L 165 90 L 170 90 L 170 96"/>
-      <line class="timing-circuit-trans" x1="154" y1="64" x2="154" y2="90"/>
-      <line class="timing-circuit-wire" x1="106" y1="77" x2="145" y2="77"/>
-      <circle class="timing-circuit-bubble" cx="150" cy="77" r="4"/>
-      <text class="timing-circuit-label" x="178" y="72">P0</text>
+      <!-- Stage 1: CMOS inverter -->
+      <line class="timing-circuit-wire" x1="88" y1="30" x2="272" y2="30"/>
+      <text class="timing-circuit-label" x="94" y="20">VDD</text>
 
-      <path class="timing-circuit-trans" d="M 170 126 L 170 132 L 165 132 L 165 158 L 170 158 L 170 164"/>
-      <line class="timing-circuit-trans" x1="154" y1="132" x2="154" y2="158"/>
-      <line class="timing-circuit-wire" x1="106" y1="145" x2="154" y2="145"/>
-      <text class="timing-circuit-label" x="178" y="140">N0</text>
+      <line class="timing-circuit-wire" x1="180" y1="30" x2="180" y2="60"/>
+      <path class="timing-circuit-trans" d="M180 60 V66 H175 V96 H180 V125"/>
+      <line class="timing-circuit-trans" x1="164" y1="66" x2="164" y2="96"/>
+      <line class="timing-circuit-wire" x1="112" y1="81" x2="155" y2="81"/>
+      <circle class="timing-circuit-bubble" cx="160" cy="81" r="4"/>
+      <text class="timing-circuit-label" x="190" y="80">P0</text>
 
-      <line class="timing-circuit-wire" x1="70" y1="111" x2="106" y2="111"/>
-      <line class="timing-circuit-wire" x1="106" y1="77" x2="106" y2="145"/>
-      <text class="timing-circuit-label" x="34" y="115">V<tspan baseline-shift="sub" font-size="9">a</tspan></text>
+      <path class="timing-circuit-trans" d="M180 125 V148 H175 V178 H180 V220"/>
+      <line class="timing-circuit-trans" x1="164" y1="148" x2="164" y2="178"/>
+      <line class="timing-circuit-wire" x1="112" y1="163" x2="164" y2="163"/>
+      <text class="timing-circuit-label" x="190" y="162">N0</text>
 
-      <line class="timing-circuit-wire" x1="170" y1="96" x2="170" y2="126"/>
-      <circle class="timing-circuit-node" cx="170" cy="111" r="3.7"/>
-      <line class="timing-circuit-wire" x1="170" y1="111" x2="300" y2="111"/>
-      <text class="timing-circuit-label" x="230" y="99">V<tspan baseline-shift="sub" font-size="9">x</tspan></text>
+      <line class="timing-circuit-wire" x1="68" y1="122" x2="112" y2="122"/>
+      <line class="timing-circuit-wire" x1="112" y1="81" x2="112" y2="163"/>
+      <text class="timing-circuit-label" x="40" y="126">V<tspan baseline-shift="sub" font-size="9">a</tspan></text>
 
-      <line class="timing-circuit-wire" x1="170" y1="164" x2="170" y2="190"/>
-      <line class="timing-circuit-wire" x1="148" y1="190" x2="192" y2="190"/>
-      <line class="timing-circuit-wire" x1="154" y1="198" x2="186" y2="198"/>
-      <line class="timing-circuit-wire" x1="161" y1="206" x2="179" y2="206"/>
+      <circle class="timing-circuit-node" cx="180" cy="125" r="3.7"/>
+      <line class="timing-circuit-wire" x1="180" y1="125" x2="360" y2="125"/>
+      <text class="timing-circuit-label" x="236" y="115">V<tspan baseline-shift="sub" font-size="9">x</tspan></text>
 
-      ${invDelay!=null ? `<text class="timing-circuit-delay" x="118" y="232">t_inv = ${invDelay} ps</text>` : ""}
+      <!-- Vx branches directly to the P1 and N1 gates -->
+      <circle class="timing-circuit-node" cx="360" cy="125" r="3.2"/>
+      <line class="timing-circuit-wire" x1="360" y1="75" x2="360" y2="203"/>
+      <line class="timing-circuit-wire" x1="360" y1="75" x2="515" y2="75"/>
+      <line class="timing-circuit-wire" x1="360" y1="203" x2="464" y2="203"/>
 
-      <line class="timing-circuit-wire" x1="390" y1="28" x2="655" y2="28"/>
-      <text class="timing-circuit-label" x="618" y="20">VDD</text>
+      <line class="timing-circuit-wire" x1="180" y1="220" x2="180" y2="232"/>
+      <line class="timing-circuit-wire" x1="158" y1="232" x2="202" y2="232"/>
+      <line class="timing-circuit-wire" x1="164" y1="240" x2="196" y2="240"/>
+      <line class="timing-circuit-wire" x1="171" y1="248" x2="189" y2="248"/>
+      ${invDelay!=null ? `<text class="timing-circuit-delay" x="138" y="276">t_inv = ${invDelay} ps</text>` : ""}
 
-      <line class="timing-circuit-wire" x1="505" y1="28" x2="505" y2="54"/>
-      <path class="timing-circuit-trans" d="M 505 54 L 505 60 L 500 60 L 500 82 L 505 82 L 505 88"/>
-      <line class="timing-circuit-trans" x1="489" y1="60" x2="489" y2="82"/>
-      <line class="timing-circuit-wire" x1="432" y1="71" x2="480" y2="71"/>
-      <circle class="timing-circuit-bubble" cx="485" cy="71" r="4"/>
-      <text class="timing-circuit-label" x="515" y="65">P1</text>
-      <text class="timing-circuit-label" x="397" y="75">V<tspan baseline-shift="sub" font-size="9">x</tspan></text>
+      <!-- Stage 2: CMOS NOR -->
+      <line class="timing-circuit-wire" x1="398" y1="30" x2="680" y2="30"/>
+      <text class="timing-circuit-label" x="646" y="20">VDD</text>
 
-      <line class="timing-circuit-wire" x1="505" y1="88" x2="505" y2="104"/>
+      <line class="timing-circuit-wire" x1="540" y1="30" x2="540" y2="56"/>
+      <path class="timing-circuit-trans" d="M540 56 V62 H535 V88 H540 V104"/>
+      <line class="timing-circuit-trans" x1="524" y1="62" x2="524" y2="88"/>
+      <circle class="timing-circuit-bubble" cx="520" cy="75" r="4"/>
+      <text class="timing-circuit-label" x="552" y="76">P1</text>
 
-      <path class="timing-circuit-trans" d="M 505 104 L 505 110 L 500 110 L 500 132 L 505 132 L 505 138"/>
-      <line class="timing-circuit-trans" x1="489" y1="110" x2="489" y2="132"/>
-      <line class="timing-circuit-wire" x1="432" y1="121" x2="480" y2="121"/>
-      <circle class="timing-circuit-bubble" cx="485" cy="121" r="4"/>
-      <text class="timing-circuit-label" x="515" y="115">P2</text>
-      <text class="timing-circuit-label" x="397" y="125">V<tspan baseline-shift="sub" font-size="9">b</tspan></text>
+      <path class="timing-circuit-trans" d="M540 104 V112 H535 V138 H540 V166"/>
+      <line class="timing-circuit-trans" x1="524" y1="112" x2="524" y2="138"/>
+      <line class="timing-circuit-wire" x1="466" y1="125" x2="515" y2="125"/>
+      <circle class="timing-circuit-bubble" cx="520" cy="125" r="4"/>
+      <text class="timing-circuit-label" x="552" y="126">P2</text>
+      <text class="timing-circuit-label" x="438" y="129">V<tspan baseline-shift="sub" font-size="9">b</tspan></text>
 
-      <line class="timing-circuit-wire" x1="505" y1="138" x2="505" y2="164"/>
-      <circle class="timing-circuit-node" cx="505" cy="164" r="3.7"/>
-      <line class="timing-circuit-wire" x1="505" y1="164" x2="662" y2="164"/>
-      <text class="timing-circuit-label" x="672" y="168">V<tspan baseline-shift="sub" font-size="9">y</tspan></text>
+      <circle class="timing-circuit-node" cx="540" cy="166" r="3.7"/>
+      <line class="timing-circuit-wire" x1="540" y1="166" x2="696" y2="166"/>
+      <text class="timing-circuit-label" x="706" y="170">V<tspan baseline-shift="sub" font-size="9">y</tspan></text>
 
-      <line class="timing-circuit-wire" x1="505" y1="164" x2="455" y2="164"/>
-      <line class="timing-circuit-wire" x1="505" y1="164" x2="575" y2="164"/>
+      <line class="timing-circuit-wire" x1="480" y1="166" x2="600" y2="166"/>
+      <line class="timing-circuit-wire" x1="480" y1="166" x2="480" y2="184"/>
+      <path class="timing-circuit-trans" d="M480 184 V190 H475 V216 H480 V232"/>
+      <line class="timing-circuit-trans" x1="464" y1="190" x2="464" y2="216"/>
+      <text class="timing-circuit-label" x="490" y="204">N1</text>
 
-      <line class="timing-circuit-wire" x1="455" y1="164" x2="455" y2="182"/>
-      <path class="timing-circuit-trans" d="M 455 182 L 455 188 L 450 188 L 450 212 L 455 212 L 455 218"/>
-      <line class="timing-circuit-trans" x1="439" y1="188" x2="439" y2="212"/>
-      <line class="timing-circuit-wire" x1="392" y1="200" x2="439" y2="200"/>
-      <text class="timing-circuit-label" x="365" y="204">V<tspan baseline-shift="sub" font-size="9">x</tspan></text>
-      <text class="timing-circuit-label" x="465" y="194">N1</text>
+      <line class="timing-circuit-wire" x1="600" y1="166" x2="600" y2="184"/>
+      <path class="timing-circuit-trans" d="M600 184 V190 H595 V216 H600 V232"/>
+      <line class="timing-circuit-trans" x1="584" y1="190" x2="584" y2="216"/>
+      <line class="timing-circuit-wire" x1="536" y1="203" x2="584" y2="203"/>
+      <text class="timing-circuit-label" x="508" y="207">V<tspan baseline-shift="sub" font-size="9">b</tspan></text>
+      <text class="timing-circuit-label" x="610" y="204">N2</text>
 
-      <line class="timing-circuit-wire" x1="575" y1="164" x2="575" y2="182"/>
-      <path class="timing-circuit-trans" d="M 575 182 L 575 188 L 570 188 L 570 212 L 575 212 L 575 218"/>
-      <line class="timing-circuit-trans" x1="559" y1="188" x2="559" y2="212"/>
-      <line class="timing-circuit-wire" x1="512" y1="200" x2="559" y2="200"/>
-      <text class="timing-circuit-label" x="485" y="204">V<tspan baseline-shift="sub" font-size="9">b</tspan></text>
-      <text class="timing-circuit-label" x="585" y="194">N2</text>
-
-      <line class="timing-circuit-wire" x1="455" y1="218" x2="455" y2="236"/>
-      <line class="timing-circuit-wire" x1="575" y1="218" x2="575" y2="236"/>
-      <line class="timing-circuit-wire" x1="455" y1="236" x2="575" y2="236"/>
-      <line class="timing-circuit-wire" x1="515" y1="236" x2="515" y2="246"/>
-      <line class="timing-circuit-wire" x1="493" y1="246" x2="537" y2="246"/>
-      <line class="timing-circuit-wire" x1="499" y1="254" x2="531" y2="254"/>
-      <line class="timing-circuit-wire" x1="506" y1="262" x2="524" y2="262"/>
-
-      <line class="timing-circuit-wire" x1="300" y1="111" x2="342" y2="111"/>
-      <circle class="timing-circuit-node" cx="342" cy="111" r="3"/>
-      <line class="timing-circuit-wire" x1="342" y1="111" x2="342" y2="71"/>
-      <line class="timing-circuit-wire" x1="342" y1="71" x2="392" y2="71"/>
-      <line class="timing-circuit-wire" x1="342" y1="111" x2="342" y2="200"/>
-      <line class="timing-circuit-wire" x1="342" y1="200" x2="392" y2="200"/>
-
-      <text class="timing-circuit-label" x="300" y="151">V<tspan baseline-shift="sub" font-size="9">b</tspan></text>
-      <line class="timing-circuit-wire" x1="322" y1="147" x2="372" y2="147"/>
-      <circle class="timing-circuit-node" cx="372" cy="147" r="3"/>
-      <line class="timing-circuit-wire" x1="372" y1="147" x2="372" y2="121"/>
-      <line class="timing-circuit-wire" x1="372" y1="121" x2="397" y2="121"/>
-      <line class="timing-circuit-wire" x1="372" y1="147" x2="372" y2="200"/>
-      <line class="timing-circuit-wire" x1="372" y1="200" x2="485" y2="200"/>
-
-      ${norDelay!=null ? `<text class="timing-circuit-delay" x="470" y="282">t_nor = ${norDelay} ps</text>` : ""}
+      <line class="timing-circuit-wire" x1="480" y1="232" x2="600" y2="232"/>
+      <line class="timing-circuit-wire" x1="540" y1="232" x2="540" y2="244"/>
+      <line class="timing-circuit-wire" x1="518" y1="244" x2="562" y2="244"/>
+      <line class="timing-circuit-wire" x1="524" y1="252" x2="556" y2="252"/>
+      <line class="timing-circuit-wire" x1="531" y1="260" x2="549" y2="260"/>
+      ${norDelay!=null ? `<text class="timing-circuit-delay" x="500" y="286">t_nor = ${norDelay} ps</text>` : ""}
     </svg>
   `;
-  document.getElementById("timing-circuit").innerHTML = svg;
+  const _c=tEl("timing-circuit"); if(_c) _c.innerHTML = svg;
 }
 
 /* ============================================================
@@ -277,12 +259,12 @@ function buildTiming(p){
     timing.draw[s.key].Vy.fill(null);
     timing.verdict=false;
     timing.completed.delete(timing.stage);
-    document.getElementById("timing-feedback-card").style.display="none";
+    tShow("timing-feedback-card","none");
     timingRefresh();
   };
 
   timingRefresh();
-  document.getElementById("timing-feedback-card").style.display="none";
+  tShow("timing-feedback-card","none");
 }
 
 function timingRefresh(){
@@ -313,6 +295,8 @@ function timingRefresh(){
 }
 function tSetText(id,t){ const e=document.getElementById(id); if(e) e.textContent=t; }
 function tSetHTML(id,h){ const e=document.getElementById(id); if(e) e.innerHTML=h; }
+function tEl(id){ return document.getElementById(id); }
+function tShow(id,disp){ const e=tEl(id); if(e) e.style.display=disp; }
 
 function renderTimingStagebar(){
   const host=document.getElementById("timing-stagebar");
@@ -355,7 +339,7 @@ function timingGoStage(i){
   timing.stage=i;
   timing.verdict=false;
   timing.dragging=false; timing.dragSig=null;
-  document.getElementById("timing-feedback-card").style.display="none";
+  tShow("timing-feedback-card","none");
   timingRefresh();
 }
 function timingPrev(){ if(timing.stage>0) timingGoStage(timing.stage-1); }
@@ -395,6 +379,7 @@ function renderTimingTable(){
   });
   html+=`</tbody></table>`;
   const host=document.getElementById("timing-table");
+  if(!host) return;
   host.innerHTML=html;
 
   host.querySelectorAll("td.tcell").forEach(td=>td.addEventListener("click",()=>{
@@ -415,7 +400,7 @@ function renderTimingTable(){
 function timingInvalidate(){
   timing.verdict=false;
   timing.completed.delete(timing.stage);
-  document.getElementById("timing-feedback-card").style.display="none";
+  tShow("timing-feedback-card","none");
   timingRenderActions();
   timingUpdateCardState();
 }
@@ -490,6 +475,7 @@ function renderTimingDiagram(){
   svg+=`</svg>`;
 
   const host=document.getElementById("timing-canvas");
+  if(!host) return;
   host.innerHTML=svg;
   const svgEl=host.querySelector("svg");
   if(!svgEl) return;
@@ -511,7 +497,7 @@ function renderTimingDiagram(){
     const refresh=()=>ans.setAttribute("d",timingPath(arr,left,g.y0,rowH,binW));
     const showPrev=(bin,val)=>{ if(timing.dragging) return; const y=val?g.hi:g.lo; const x0=left+bin*binW+3, x1=left+(bin+1)*binW-3; prev.setAttribute("d",`M ${x0} ${y} L ${x1} ${y}`); dot.setAttribute("cx",(x0+x1)/2); dot.setAttribute("cy",y); dot.style.display=""; };
     const hidePrev=()=>{ prev.setAttribute("d",""); dot.style.display="none"; };
-    const paint=(a,b,val)=>{ const lo=Math.min(a,b),hi=Math.max(a,b); for(let i=lo;i<=hi;i++) arr[i]=val; timing.verdict=false; timing.completed.delete(timing.stage); document.getElementById("timing-feedback-card").style.display="none"; refresh(); timingRenderActions(); timingUpdateCardState(); };
+    const paint=(a,b,val)=>{ const lo=Math.min(a,b),hi=Math.max(a,b); for(let i=lo;i<=hi;i++) arr[i]=val; timing.verdict=false; timing.completed.delete(timing.stage); tShow("timing-feedback-card","none"); refresh(); timingRenderActions(); timingUpdateCardState(); };
 
     hit.addEventListener("pointermove",e=>{
       const l=loc(e);
@@ -581,9 +567,9 @@ function timingCheck(){
   }
 
   const host=document.getElementById("timing-feedback");
-  host.innerHTML="";
-  msgs.forEach(mo=>{ const d=document.createElement("div"); d.className="msg "+mo.s; d.innerHTML=`<span class="mtag">${mo.tag}</span>${mo.t}`; host.appendChild(d); });
-  document.getElementById("timing-feedback-card").style.display="block";
+  if(host){ host.innerHTML=""; }
+  if(host) msgs.forEach(mo=>{ const d=document.createElement("div"); d.className="msg "+mo.s; d.innerHTML=`<span class="mtag">${mo.tag}</span>${mo.t}`; host.appendChild(d); });
+  tShow("timing-feedback-card","block");
 
   timingRefresh();
 }
