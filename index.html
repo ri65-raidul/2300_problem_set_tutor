@@ -12,29 +12,54 @@
 <body>
 <div class="wrap">
   <div class="topbar">
-    <a class="logo" href="#" onclick="goChapters();return false;">
-      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
-        <rect x="1.5" y="1.5" width="27" height="27" rx="5" stroke="#14181f" stroke-width="1.6"/>
-        <line x1="15" y1="2" x2="15" y2="28" stroke="#14181f" stroke-width="1.2"/>
-        <line x1="2" y1="15" x2="28" y2="15" stroke="#14181f" stroke-width="1.2"/>
-        <circle cx="8" cy="8" r="2.4" fill="#e5484d"/>
-        <circle cx="22" cy="8" r="2.4" fill="#0091ff"/>
-        <circle cx="8" cy="22" r="2.4" fill="#0091ff"/>
-        <circle cx="22" cy="22" r="2.4" fill="#e5484d"/>
-      </svg>
-      <span>
-        <span class="name">Digital Logic & Computer Organization</span><br>
-        <span class="tag">Interactive Problem Sets</span>
-      </span>
-    </a>
+    <div class="topbar-inner">
+      <a class="logo" href="#" onclick="goChapters();return false;">
+        <span>
+          <span class="name">Interactive Practice Problems</span><br>
+          <span class="tag">ECE 2300 - Digital Logic & Computer Organization</span>
+        </span>
+      </a>
+    </div>
   </div>
 
   <!-- VIEW: CHAPTERS -->
   <section id="view-chapters" class="view active">
-    <div class="eyebrow">Practice by topic</div>
-    <h1 class="page">Pick a topic to practice</h1>
-    <p class="lede">Choose a topic, pick a problem, and work it on the map. The bench checks your grouping as you go — not just whether it's right, but whether it's fully simplified.</p>
-    <div id="chapters" class="chapters"></div>
+    <div class="study-hero">
+      <div class="study-hero-inner">
+        <div class="study-hero-copy">
+          <h1>Practice by topic</h1>
+          <p>Select a course topic, complete the problem directly in your browser, and check your answer for immediate feedback.</p>
+          <a class="study-start" href="#topic-library">Browse course topics <span aria-hidden="true">&darr;</span></a>
+        </div>
+
+        <div class="study-guide" aria-label="Using the problem sets">
+          <div class="study-guide-label">Using this page</div>
+          <div class="study-step">
+            <span>01</span>
+            <div><b>Select a topic</b><small>Open the section you want to practice.</small></div>
+          </div>
+          <div class="study-step">
+            <span>02</span>
+            <div><b>Complete the interaction</b><small>Build circuits, group K-maps, toggle switches, or draw waveforms.</small></div>
+          </div>
+          <div class="study-step">
+            <span>03</span>
+            <div><b>Check your answer</b><small>Review the feedback and revise any incorrect steps.</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="topic-library" id="topic-library">
+      <div class="topic-heading">
+        <div>
+          <div class="eyebrow">Course topics</div>
+          <h2>Choose a topic</h2>
+        </div>
+        <p>Select a topic to see its available problems.</p>
+      </div>
+      <div id="chapters" class="chapters"></div>
+    </div>
   </section>
 
   <!-- VIEW: PROBLEMS -->
@@ -211,32 +236,40 @@
     <!-- TYPE: TIMING DIAGRAM -->
     <div id="solver-timing" style="display:none;">
       <div class="timing-wrap">
-        <div class="timing-card">
+        <div class="timing-card" id="timing-main-card">
           <div class="workspace-heading">
-            <span class="workspace-number">01</span>
+            <span class="workspace-number" id="timing-stage-num">6.A</span>
             <div>
-              <div class="workspace-title">Complete the timing diagram</div>
-              <div class="workspace-desc">Set the output waveform.</div>
+              <div class="workspace-title" id="timing-stage-title">Logic behaviour</div>
+              <div class="workspace-desc" id="timing-stage-desc"></div>
             </div>
           </div>
+
+          <div class="timing-stagebar" id="timing-stagebar"></div>
+
           <div class="timing-circuit-wrap">
             <div class="timing-circuit-title">Circuit</div>
             <div id="timing-circuit"></div>
           </div>
 
-          <div class="timing-toolbar">
-            <button class="btn ghost sm" id="timing-clear" type="button">Clear output</button>
+          <div class="timing-instruction" id="timing-instruction"></div>
+
+          <!-- Stage A: truth table -->
+          <div id="timing-table"></div>
+
+          <!-- Stages B–E: timing diagram -->
+          <div id="timing-diagram-wrap">
+            <div class="timing-toolbar">
+              <button class="btn ghost sm" id="timing-clear" type="button">Clear drawing</button>
+              <span class="timing-draw-hint">Hover a row to preview, then click or drag in the V<sub>x</sub> and V<sub>y</sub> rows to draw.</span>
+            </div>
+            <div id="timing-canvas"></div>
+            <div class="figcap"><b>Fig. 1</b> — Timing diagram</div>
           </div>
-          <div class="timing-instruction">Use the circuit above to determine Vᵧ. Hover near 0 V or 3.3 V to preview, then click and drag to draw the waveform.</div>
-          <div id="timing-canvas"></div>
-          <div class="figcap"><b>Fig. 1</b> — Timing diagram</div>
         </div>
         <div class="timing-side">
           <div class="card"><h3>Model</h3><div id="timing-model-text" class="hint" style="margin-top:0;"></div></div>
-          <div class="btn-row">
-            <button class="btn" onclick="timingCheck()">Check my answer</button>
-            <button class="btn ghost" onclick="timingReset()">Reset</button>
-          </div>
+          <div class="timing-actions" id="timing-actions"></div>
           <div class="card" id="timing-feedback-card" style="display:none;"><h3>Feedback</h3><div class="feedback" id="timing-feedback"></div></div>
         </div>
       </div>
