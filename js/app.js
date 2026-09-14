@@ -15,6 +15,10 @@ function chapterOf(n){ return CHAPTERS.find(c=>c.number===n); }
 function chapterVisible(n){ const c=chapterOf(n); return !!c && !c.hidden; }
 function problemsIn(n){ return PROBLEMS.filter(p=>p.chapter===n); }
 
+/* Badge text intentionally names problem length, not difficulty, so a student
+   who clears the "long" problems doesn't read that as "ready for the prelim". */
+const DIFF_LABELS = { easy:"Short", med:"Medium", hard:"Long" };
+
 /* ---- router: each screen gets its own URL hash so the browser's
         Back / Forward buttons (and mobile swipe-back) move between them ---- */
 function showView(view){
@@ -89,7 +93,7 @@ function buildProblems(n){
       <span class="pmid">
         <span class="pname">${p.title}</span>
       </span>
-      <span class="diff ${p.diff}">${p.diff}</span>
+      <span class="diff ${p.diff}">${DIFF_LABELS[p.diff]||p.diff}</span>
       <span class="parrow">→</span>`;
     b.onclick=()=>openProblem(p.id);
     host.appendChild(b);
