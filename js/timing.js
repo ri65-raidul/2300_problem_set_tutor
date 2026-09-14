@@ -305,7 +305,9 @@ function renderTimingStagebar(){
     const done=timing.completed.has(i), cur=i===timing.stage;
     return `<span class="t-step${done?" done":""}${cur?" current":""}">${done && !cur ? "\u2713" : s.key}</span>`;
   }).join("");
-  host.innerHTML=`<div class="t-stepbar">${dots}</div>
+  const dev = (DEV_MODE && timing.stage!==TSTAGES.length-1)
+    ? `<button type="button" class="dev-skip-link" onclick="timingGoStage(${TSTAGES.length-1})">Dev: skip to last stage &rarr;</button>` : "";
+  host.innerHTML=`<div class="t-stepbar">${dots}</div>${dev}
     <button class="sw-reset-link" id="timing-reset-link" type="button">Reset problem</button>`;
   const rb=document.getElementById("timing-reset-link");
   if(rb) rb.onclick=timingReset;

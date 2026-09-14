@@ -192,6 +192,7 @@ function renderSwToolbar(){
     <div class="sw-progress-inline">
       <b>${sw.completed.size}</b> of <b>${N}</b> combinations solved.
       <button class="sw-reset-link" id="sw-reset" type="button">Reset problem</button>
+      ${(DEV_MODE && s!==N-1) ? `<button type="button" class="dev-skip-link" onclick="swGoStage(${N-1})">Dev: skip to last stage &rarr;</button>` : ""}
     </div>
 
     ${legend}

@@ -1,5 +1,11 @@
 // App.js
 
+/* Developer mode: append ?dev=1 to the URL (e.g. index.html?dev=1#/problem/p2-5)
+   to reveal "skip to last stage" shortcuts on staged problems, for testing a
+   later stage without re-solving every stage before it. Never shown to students
+   by default — it's purely a query-string opt-in. */
+const DEV_MODE = new URLSearchParams(location.search).has("dev");
+
 /* ============================================================
    STATE + NAVIGATION
    ============================================================ */
@@ -61,8 +67,7 @@ function renderChapters(){
     el.innerHTML=`
       <span class="num">TOPIC ${c.number}</span>
       <span class="ctitle">${c.title}</span>
-      <span class="cdesc">${c.description}</span>
-      <span class="count">${locked?'<span class="pill">Coming soon</span>':count+" problem"+(count===1?"":"s")+" →"}</span>`;
+      ${locked?'<span class="pill">Coming soon</span>':'<span class="arrow" aria-hidden="true">→</span>'}`;
     if(!locked) el.onclick=()=>openChapter(c.number);
     host.appendChild(el);
   }
@@ -103,9 +108,34 @@ function problemSubtitle(p){
   if(p.type==="switch") return `Switch-level · trace closed/open switches`;
   if(p.type==="timing") return `Timing diagram`;
   if(p.type==="gate") return `Gate-level · complete the truth table`;
+  if(p.type==="match") return `Gate-level · match truth tables to gates`;
+  if(p.type==="norbuild") return `Gate-level · build gates from ${p.primitive==="NAND"?"NAND2":"NOR2"}`;
+  if(p.type==="glnet") return `Gate-level · truth table, timing analysis & diagram`;
+  if(p.type==="sop") return `Gate-level · wire the sum of canonical products`;
   return fnString(p);
 }
 function currentProblem(){ return PROBLEMS.find(p=>p.id===state.problemId); }
+
+/* Previous/next links between sibling problems within the same chapter. */
+function renderSolverPager(p){
+  const host=document.getElementById("solver-pager");
+  if(!host) return;
+  const siblings=problemsIn(p.chapter);
+  const i=siblings.findIndex(x=>x.id===p.id);
+  const prevP = i>0 ? siblings[i-1] : null;
+  const nextP = i<siblings.length-1 ? siblings[i+1] : null;
+
+  const side=(target,dir)=>{
+    if(!target) return `<span class="pager-link disabled">${dir==="prev"?"← Previous problem":"Next problem →"}</span>`;
+    const label=dir==="prev" ? `← ${target.title}` : `${target.title} →`;
+    return `<button type="button" class="pager-link" data-id="${target.id}">${label}</button>`;
+  };
+
+  host.innerHTML=side(prevP,"prev")+side(nextP,"next");
+  host.querySelectorAll(".pager-link[data-id]").forEach(btn=>{
+    btn.onclick=()=>openProblem(btn.dataset.id);
+  });
+}
 
 function buildSolver(id){
   state.problemId=id; state.pending=new Set(); state.groups=[];
@@ -114,6 +144,7 @@ function buildSolver(id){
   document.getElementById("crumb-back-chapter").onclick=()=>openChapter(p.chapter);
   document.getElementById("crumb-problem").textContent=p.title;
   document.getElementById("solve-title").textContent=p.title;
+  renderSolverPager(p);
 
   const question=document.getElementById("solve-question");
   const prompt=document.getElementById("solve-prompt");
@@ -124,7 +155,11 @@ function buildSolver(id){
     cmos:document.getElementById("solver-cmos"),
     sw:document.getElementById("solver-switch"),
     timing:document.getElementById("solver-timing"),
-    gate:document.getElementById("solver-gate")
+    gate:document.getElementById("solver-gate"),
+    match:document.getElementById("solver-match"),
+    norbuild:document.getElementById("solver-nor"),
+    glnet:document.getElementById("solver-glnet"),
+    sop:document.getElementById("solver-sop")
   };
   Object.values(views).forEach(v=>v.style.display="none");
 
@@ -162,6 +197,34 @@ function buildSolver(id){
     fn.style.display="none";
     views.gate.style.display="block";
     buildGateProblem(p);
+  } else if(p.type==="match"){
+    document.getElementById("solve-eyebrow").textContent="";
+    question.style.display="block";
+    prompt.textContent=p.prompt;
+    fn.style.display="none";
+    views.match.style.display="block";
+    buildMatchProblem(p);
+  } else if(p.type==="norbuild"){
+    document.getElementById("solve-eyebrow").textContent="";
+    question.style.display="block";
+    prompt.textContent=p.prompt;
+    fn.style.display="none";
+    views.norbuild.style.display="block";
+    buildNorProblem(p);
+  } else if(p.type==="glnet"){
+    document.getElementById("solve-eyebrow").textContent="";
+    question.style.display="block";
+    prompt.textContent=p.prompt;
+    fn.style.display="none";
+    views.glnet.style.display="block";
+    buildGlnet(p);
+  } else if(p.type==="sop"){
+    document.getElementById("solve-eyebrow").textContent="";
+    question.style.display="block";
+    prompt.textContent=p.prompt;
+    fn.style.display="none";
+    views.sop.style.display="block";
+    buildSop(p);
   } else {
     document.getElementById("solve-eyebrow").textContent=`Karnaugh map · ${p.variables.length} variables`;
     question.style.display="none";

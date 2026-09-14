@@ -1,18 +1,18 @@
 const CHAPTERS = [
   { number:1, title:"Digital Circuits", description:"Warm up: single-term and two-term simplifications." },
   { number:2, title:"Combinational Logic", description:"Practice gate-level networks and truth tables." },
-  { number:3, title:"Boolean Algebra", description:"Adders, MUX, decoders.", locked:true },
-  { number:4, title:"Combinational Blocks", description:"Use don't-cares to grow groups and simplify further." },
+  { number:3, title:"Boolean Algebra", description:"Adders, MUX, decoders.", hidden:true },
+  { number:4, title:"Combinational Blocks", description:"Use don't-cares to grow groups and simplify further.", hidden:true },
   { number:5, title:"Number Systems", description:"Use don't-cares to grow groups and simplify further.", hidden:true },
-  { number:6, title:"Sequential Logic", description:"Use don't-cares to grow groups and simplify further." },
-  { number:7, title:"Finite State Machines", description:"Use don't-cares to grow groups and simplify further." },
-  { number:8, title:"Sequential Blocks", description:"Use don't-cares to grow groups and simplify further." },
-  { number:9, title:"Instruction Set Architecture", description:"Use don't-cares to grow groups and simplify further." },
-  { number:10, title:"Single Cycle Processor", description:"Use don't-cares to grow groups and simplify further." },
-  { number:11, title:"Multi Cycle Processor", description:"Use don't-cares to grow groups and simplify further." },
-  { number:12, title:"Pipelined Processor", description:"Use don't-cares to grow groups and simplify further." },
-  { number:13, title:"Caches", description:"Use don't-cares to grow groups and simplify further." },
-  { number:14, title:"Proc + Caches", description:"Use don't-cares to grow groups and simplify further." }
+  { number:6, title:"Sequential Logic", description:"Use don't-cares to grow groups and simplify further.", hidden:true },
+  { number:7, title:"Finite State Machines", description:"Use don't-cares to grow groups and simplify further.", hidden:true },
+  { number:8, title:"Sequential Blocks", description:"Use don't-cares to grow groups and simplify further.", hidden:true },
+  { number:9, title:"Instruction Set Architecture", description:"Use don't-cares to grow groups and simplify further.", hidden:true },
+  { number:10, title:"Single Cycle Processor", description:"Use don't-cares to grow groups and simplify further.", hidden:true },
+  { number:11, title:"Multi Cycle Processor", description:"Use don't-cares to grow groups and simplify further.", hidden:true },
+  { number:12, title:"Pipelined Processor", description:"Use don't-cares to grow groups and simplify further.", hidden:true },
+  { number:13, title:"Caches", description:"Use don't-cares to grow groups and simplify further.", hidden:true },
+  { number:14, title:"Proc + Caches", description:"Use don't-cares to grow groups and simplify further.", hidden:true }
 ];
 
 const PROBLEMS = [
@@ -109,6 +109,129 @@ const PROBLEMS = [
   { id:"p2-1", chapter:2, type:"gate", title:"AND–OR network", diff:"easy",
     prompt:"Complete the truth table for the gate-level network.",
     inputs:["A","B","C"], nodes:["X","Y"] },
+
+  { id:"p2-2", chapter:2, type:"match", title:"Match the gate", diff:"easy",
+    prompt:"Each truth table below was produced by one of the four gates above. Match every table to its gate.",
+    gates:["AND","OR","XOR","XNOR"] },
+
+  { id:"p2-3", chapter:2, type:"norbuild", title:"Universal primitive gate set: NOR", diff:"hard",
+    prompt:"NOR2 alone can build every other basic gate. Drag NOR2 gates onto the canvas and wire them so your circuit matches each target gate's truth table.",
+    primitive:"NOR", stages:["NOT","AND"] },
+
+  { id:"p2-4", chapter:2, type:"norbuild", title:"Universal primitive gate set: NAND", diff:"hard",
+    prompt:"NAND2 alone can build every other basic gate. Drag NAND2 gates onto the canvas and wire them so your circuit matches each target gate's truth table.",
+    primitive:"NAND", stages:["OR","AND"] },
+
+  { id:"p2-5", chapter:2, type:"glnet", title:"Gate-level network timing", diff:"hard",
+    prompt:"Work through the fixed gate-level network in three stages: complete its truth table, analyze the timing of every path, then complete its timing diagram.",
+    network:{
+      inputs:["A","B","C"],
+      gates:[
+        { out:"W", kind:"AND2", in:["A","B"] },
+        { out:"X", kind:"NOT", in:["C"] },
+        { out:"Z", kind:"NOR2", in:["W","X"] },
+        { out:"Y", kind:"NOT", in:["Z"] }
+      ],
+      output:"Y",
+      delays:{ NOT:{tpd:1,tcd:1}, AND2:{tpd:2,tcd:1}, NOR2:{tpd:3,tcd:1} },
+      waveform:{
+        A:{ init:1, transitions:[] },
+        B:{ init:1, transitions:[{time:4,value:0}] },
+        C:{ init:1, transitions:[{time:10,value:0}] }
+      },
+      duration:20,
+      diagramSvg:`
+    <svg class="gate-svg" viewBox="0 0 620 260" role="img"
+      aria-label="A and B enter an AND2 gate to produce W. C enters a NOT gate to produce X. W and X enter a NOR2 gate to produce Z. Z enters a NOT gate to produce Y."
+      xmlns="http://www.w3.org/2000/svg">
+      <g class="gate-wire">
+        <path d="M20 55 H140"/>
+        <path d="M20 105 H140"/>
+        <path d="M20 210 H90"/>
+        <path d="M210 80 H245 V105 H280"/>
+        <path d="M153 210 H245 V175 H280"/>
+        <path d="M382 140 H420"/>
+        <path d="M483 140 H560"/>
+      </g>
+      <path class="gate-symbol" d="M140 40 H165 C195 40 210 58 210 80 C210 102 195 120 165 120 H140 Z"/>
+      <path class="gate-symbol" d="M90 190 L140 210 L90 230 Z"/>
+      <circle class="gate-symbol" cx="147" cy="210" r="6"/>
+      <path class="gate-symbol" d="M280 90 C310 90 335 100 352 118 C362 128 368 134 368 140 C368 146 362 152 352 162 C335 180 310 190 280 190 C295 165 295 115 280 90 Z"/>
+      <circle class="gate-symbol" cx="376" cy="140" r="6"/>
+      <path class="gate-symbol" d="M420 120 L470 140 L420 160 Z"/>
+      <circle class="gate-symbol" cx="477" cy="140" r="6"/>
+      <g class="gate-label">
+        <text x="10" y="59" text-anchor="end">A</text>
+        <text x="10" y="109" text-anchor="end">B</text>
+        <text x="10" y="214" text-anchor="end">C</text>
+        <text x="216" y="72">W</text>
+        <text x="156" y="196">X</text>
+        <text x="372" y="120">Z</text>
+        <text x="566" y="144">Y</text>
+      </g>
+    </svg>`
+    } },
+
+  { id:"p2-6", chapter:2, type:"glnet", title:"Gate-level network timing II", diff:"hard",
+    prompt:"A second fixed gate-level network, this time mixing NOT, AND2, and XOR2 gates. Work through the same three stages: truth table, timing analysis, then timing diagram.",
+    network:{
+      inputs:["A","B","C","D"],
+      gates:[
+        { out:"W", kind:"NOT", in:["B"] },
+        { out:"X", kind:"AND2", in:["A","W"] },
+        { out:"Z", kind:"XOR2", in:["C","D"] },
+        { out:"Y", kind:"XOR2", in:["X","Z"] }
+      ],
+      output:"Y",
+      delays:{ NOT:{tpd:1,tcd:1}, AND2:{tpd:3,tcd:1}, XOR2:{tpd:7,tcd:4} },
+      waveform:{
+        A:{ init:1, transitions:[] },
+        B:{ init:1, transitions:[{time:4,value:0}] },
+        C:{ init:1, transitions:[{time:16,value:0}] },
+        D:{ init:1, transitions:[{time:32,value:0}] }
+      },
+      duration:48,
+      diagramSvg:`
+    <svg class="gate-svg" viewBox="0 0 620 285" role="img"
+      aria-label="B enters a NOT gate to produce W. A and W enter an AND2 gate to produce X. C and D enter an XOR2 gate to produce Z. X and Z enter a second XOR2 gate to produce Y."
+      xmlns="http://www.w3.org/2000/svg">
+      <g class="gate-wire">
+        <path d="M20 35 H70"/>
+        <path d="M123 35 H132 V55 H140"/>
+        <path d="M20 105 H140"/>
+        <path d="M210 80 H340 V170 H400"/>
+        <path d="M20 175 H210 V195 H240"/>
+        <path d="M20 225 H210 V235 H240"/>
+        <path d="M328 215 H360 V230 H400"/>
+        <path d="M488 200 H560"/>
+      </g>
+      <path class="gate-symbol" d="M70 20 L110 35 L70 50 Z"/>
+      <circle class="gate-symbol" cx="117" cy="35" r="6"/>
+      <path class="gate-symbol" d="M140 40 H165 C195 40 210 58 210 80 C210 102 195 120 165 120 H140 Z"/>
+      <path class="gate-wire" d="M226 165 C241 190 241 240 226 265"/>
+      <path class="gate-symbol" d="M240 165 C270 165 295 175 312 193 C322 203 328 209 328 215 C328 221 322 227 312 237 C295 255 270 265 240 265 C255 240 255 190 240 165 Z"/>
+      <path class="gate-wire" d="M386 150 C401 175 401 225 386 250"/>
+      <path class="gate-symbol" d="M400 150 C430 150 455 160 472 178 C482 188 488 194 488 200 C488 206 482 212 472 222 C455 240 430 250 400 250 C415 225 415 175 400 150 Z"/>
+      <g class="gate-label">
+        <text x="10" y="39" text-anchor="end">B</text>
+        <text x="10" y="109" text-anchor="end">A</text>
+        <text x="10" y="179" text-anchor="end">C</text>
+        <text x="10" y="229" text-anchor="end">D</text>
+        <text x="128" y="26">W</text>
+        <text x="216" y="72">X</text>
+        <text x="332" y="201">Z</text>
+        <text x="566" y="204">Y</text>
+      </g>
+    </svg>`
+    } },
+
+  { id:"p2-7", chapter:2, type:"sop", title:"Sum of canonical products", diff:"medium",
+    prompt:"Go from a truth table to a gate-level network, just doing the wiring: drag each AND gate's inputs to the correct literals so the circuit implements the given truth table as a sum of canonical products.",
+    variables:["A","B","C"], minterms:[0,1,6,7] },
+
+  { id:"p2-8", chapter:2, type:"sop", title:"Sum of canonical products II", diff:"medium",
+    prompt:"A second truth table to go from, just doing the wiring: drag each AND gate's inputs to the correct literals so the circuit implements the given truth table as a sum of canonical products.",
+    variables:["A","B","C"], minterms:[1,2,4,7] },
 
   { id:"p3-1", chapter:3, type:"kmap", title:"Cover every 1", diff:"easy",
     variables:["A","B","C","D"], minterms:[0,1,4,5,12,13], dontcares:[] },

@@ -27,8 +27,8 @@
     <div class="study-hero">
       <div class="study-hero-inner">
         <div class="study-hero-copy">
-          <h1>Practice by topic</h1>
-          <p>Select a course topic, complete the problem directly in your browser, and check your answer for immediate feedback.</p>
+          <h1>Built by your TAs</h1>
+          <p>Every problem here is curated by your course TAs to match exactly what you've seen in lecture and how we'll assess your mastery of the material on exams.</p>
           <a class="study-start" href="#topic-library">Browse course topics <span aria-hidden="true">&darr;</span></a>
           <div class="study-note">
             <span class="study-badge">Early prototype</span>
@@ -88,6 +88,7 @@
       <span class="sep">/</span>
       <span id="crumb-problem" class="here"></span>
     </div>
+    <div class="solver-pager" id="solver-pager"></div>
     <div class="solver-head">
       <div class="eyebrow" id="solve-eyebrow">Karnaugh map · 4 variables</div>
       <h2 id="solve-title"></h2>
@@ -276,6 +277,160 @@
       </div>
     </div>
 
+    <!-- TYPE: TRUTH TABLE <-> GATE MATCHING -->
+    <div id="solver-match" style="display:none;">
+      <div class="card match-workspace" id="match-workspace">
+        <div class="workspace-heading">
+          <span class="workspace-number">01</span>
+          <div>
+            <div class="workspace-title">Match each table to its gate</div>
+            <div class="workspace-desc" id="match-hint">Tap a gate below, then tap the truth table you think it belongs to.</div>
+          </div>
+        </div>
+
+        <div class="match-section-label">Gates</div>
+        <div class="match-gate-row" id="match-gate-row"></div>
+
+        <div class="match-section-label match-tables-label">Truth tables</div>
+        <div class="match-table-grid" id="match-table-grid"></div>
+
+        <div class="btn-row match-actions" id="match-actions">
+          <button class="btn" type="button" onclick="matchCheck()">Check matches</button>
+          <button class="btn ghost" type="button" onclick="matchReset()">Reset</button>
+        </div>
+
+        <div class="card match-feedback-card" id="match-feedback-card" style="display:none;">
+          <h3>Feedback</h3>
+          <div class="feedback" id="match-feedback"></div>
+        </div>
+
+        <div class="match-complete-actions" id="match-complete-actions" style="display:none;">
+          <span class="match-complete-msg">Solved. This problem is complete.</span>
+          <button class="btn" type="button" onclick="matchExploreMoreProblems()">Explore more problems &rarr;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TYPE: BUILD GATES FROM A UNIVERSAL PRIMITIVE (NOR2 or NAND2) -->
+    <div id="solver-nor" style="display:none;">
+      <div class="card nor-workspace" id="nor-workspace">
+        <div class="workspace-heading">
+          <span class="workspace-number" id="nor-stage-num">01</span>
+          <div>
+            <div class="workspace-title" id="nor-stage-title">Build a NOT gate</div>
+            <div class="workspace-desc" id="nor-stage-desc"></div>
+          </div>
+        </div>
+
+        <div class="nor-stagebar" id="nor-stagebar"></div>
+
+        <div class="nor-layout">
+          <div class="nor-col nor-col-source">
+            <div class="match-section-label" id="nor-palette-label">NOR2 &mdash; drag onto the canvas</div>
+            <div id="nor-palette"></div>
+            <div class="match-section-label" id="nor-ref-label">NOR2 truth table</div>
+            <div id="nor-ref-table"></div>
+          </div>
+
+          <div class="nor-col nor-col-canvas">
+            <div class="match-section-label">Your circuit</div>
+            <div class="nor-canvas-toolbar" id="nor-canvas-toolbar"></div>
+            <div class="nor-canvas-wrap" id="nor-canvas"></div>
+            <div class="figcap"><b>Fig. 1</b> &mdash; <span id="nor-figcap-label">NOR2</span> circuit</div>
+          </div>
+
+          <div class="nor-col nor-col-target">
+            <div class="match-section-label" id="nor-target-label">Target: NOT</div>
+            <div id="nor-target-table"></div>
+          </div>
+        </div>
+
+        <div class="btn-row nor-actions" id="nor-actions"></div>
+
+        <div class="card nor-feedback-card" id="nor-feedback-card" style="display:none;">
+          <h3>Feedback</h3>
+          <div class="feedback" id="nor-feedback"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TYPE: GATE-LEVEL NETWORK TIMING ANALYSIS -->
+    <div id="solver-glnet" style="display:none;">
+      <div class="card gl-card" id="gl-card">
+        <div class="workspace-heading">
+          <span class="workspace-number" id="gl-stage-num">01</span>
+          <div>
+            <div class="workspace-title" id="gl-stage-title"></div>
+            <div class="workspace-desc" id="gl-stage-desc"></div>
+          </div>
+        </div>
+
+        <div class="gl-stagebar" id="gl-stagebar"></div>
+
+        <div class="timing-instruction" id="gl-instruction"></div>
+
+        <div class="gl-layout">
+          <div class="gl-col gl-col-circuit">
+            <div class="match-section-label">Gate-level network</div>
+            <div id="gl-circuit"></div>
+            <div class="match-section-label" id="gl-delay-label" style="display:none;">Gate delays</div>
+            <div id="gl-delay-info" style="display:none;"></div>
+          </div>
+          <div class="gl-col">
+            <div class="match-section-label" id="gl-right-label">Truth table</div>
+            <div id="gl-right-body"></div>
+          </div>
+        </div>
+
+        <div class="btn-row gl-actions" id="gl-actions"></div>
+
+        <div class="card gl-feedback-card" id="gl-feedback-card" style="display:none;">
+          <h3>Feedback</h3>
+          <div class="feedback" id="gl-feedback"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TYPE: SUM OF CANONICAL PRODUCTS WIRING -->
+    <div id="solver-sop" style="display:none;">
+      <div class="card sop-workspace" id="sop-workspace">
+        <div class="workspace-heading">
+          <span class="workspace-number">01</span>
+          <div>
+            <div class="workspace-title">Wire the sum of canonical products</div>
+            <div class="workspace-desc">Drag from a literal's line to an AND gate's input pin. Click a connected pin to remove it.</div>
+          </div>
+        </div>
+
+        <div class="sop-layout">
+          <div class="sop-col sop-col-table">
+            <div class="match-section-label">Truth table</div>
+            <div id="sop-table"></div>
+          </div>
+          <div class="sop-col sop-col-canvas">
+            <div class="match-section-label">Gate-level network</div>
+            <div class="sop-canvas-toolbar" id="sop-canvas-toolbar"></div>
+            <div class="sop-canvas-wrap" id="sop-canvas"></div>
+          </div>
+        </div>
+
+        <div class="btn-row sop-actions" id="sop-actions">
+          <button class="btn" type="button" onclick="sopCheck()">Check wiring</button>
+          <button class="btn ghost" type="button" onclick="sopReset()">Reset</button>
+        </div>
+
+        <div class="card sop-feedback-card" id="sop-feedback-card" style="display:none;">
+          <h3>Feedback</h3>
+          <div class="feedback" id="sop-feedback"></div>
+        </div>
+
+        <div class="gate-complete-actions" id="sop-complete-actions" style="display:none;">
+          <span class="gate-complete-msg">Solved. This problem is complete.</span>
+          <button class="btn" type="button" onclick="sopExploreMoreProblems()">Explore more problems &rarr;</button>
+        </div>
+      </div>
+    </div>
+
     <!-- TYPE: TIMING DIAGRAM -->
     <div id="solver-timing" style="display:none;">
       <div class="timing-wrap">
@@ -319,7 +474,7 @@
     </div>
   </section>
 
-  <footer>LOGIC BENCH · PROTOTYPE · ALL CHECKING RUNS IN YOUR BROWSER</footer>
+  <footer>DEVELOPED BY RAIDUL ISLAM &amp; SAM HUNTER</footer>
 </div>
 
 <script src="js/data.js"></script>
@@ -329,6 +484,10 @@
 <script src="js/timing.js"></script>
 <script src="js/switch.js"></script>
 <script src="js/gate.js"></script>
+<script src="js/match.js"></script>
+<script src="js/nor.js"></script>
+<script src="js/glnet.js"></script>
+<script src="js/sop.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>
