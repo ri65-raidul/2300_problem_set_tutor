@@ -198,7 +198,7 @@ function matchCheck(){
   if(incomplete){
     add("info","Note",`Place a gate on ${incomplete} more table${incomplete===1?"":"s"} before checking.`);
   } else if(wrong){
-    add("warn","Nudge",`Table${wrongLetters.length===1?"":"s"} ${wrongLetters.join(", ")} ${wrongLetters.length===1?"doesn't":"don't"} match yet. Compare the A=1,B=1 row first — that's where AND, OR, XOR, and XNOR all disagree.`);
+    add("warn","Nudge",`Table${wrongLetters.length===1?"":"s"} ${wrongLetters.join(", ")} ${wrongLetters.length===1?"doesn't":"don't"} match yet. Compare the A=1,B=1 row first. That's where AND, OR, XOR, and XNOR all disagree.`);
   } else {
     add("success","Correct","Every truth table is matched to its gate.");
     matchSetSolved(true);

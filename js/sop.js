@@ -52,7 +52,7 @@ function sopGeom(p){
   // that 16 on each side, or the triangle visually overlaps the true line it
   // isn't wired to. LANE_W must then clear one variable's complement line plus
   // the next variable's true line.
-  const COMP_OFF=34, LANE_W=68, RAIL_X0=28;
+  const COMP_OFF=34, LANE_W=78, RAIL_X0=28;
   // sopNotGlyph() is a horizontal triangle+bubble (local x: -20 base .. +20 tip .. +29 bubble edge)
   // rotated 90° here, so its local x-extent becomes vertical: NOT_LEAD_END is where the triangle
   // starts and NOT_MID_Y+29 is the bubble's trailing edge (matches COMP_TOP). A short vertical lead
@@ -64,13 +64,13 @@ function sopGeom(p){
   const AND_GAP=14;
   const AND_SPACING=AND_HALF_H*2+AND_GAP;
   const GATE_TOP=Math.max(COMP_TOP+44,80);
-  const OR_GAP=46;
+  const OR_GAP=60;
   const OR_HALF_W=34;
   const OR_HALF_H=Math.max(22,((k-1)*14+22)/2);
 
   const trueX=[], compX=[];
   for(let i=0;i<n;i++){ trueX.push(RAIL_X0+i*LANE_W); compX.push(trueX[i]+COMP_OFF); }
-  const GATE_IN_X=(n?compX[n-1]:RAIL_X0)+50;   // x of every AND gate's flat left edge (input pins)
+  const GATE_IN_X=(n?compX[n-1]:RAIL_X0)+64;   // x of every AND gate's flat left edge (input pins)
   const railX={};
   p.variables.forEach((v,i)=>{ railX[v]=trueX[i]; railX[sopComp(v)]=compX[i]; });
 
@@ -92,7 +92,7 @@ function sopGeom(p){
     orInLocalY.push(k===1 ? 0 : -OR_HALF_H+10+j*((OR_HALF_H*2-20)/(k-1)));
   }
 
-  const W=orTipX+50;
+  const W=orTipX+56;
   const H=Math.max(railBottom,orCenterY+OR_HALF_H)+24;
 
   return {
@@ -284,8 +284,15 @@ function sopRenderCanvas(){
         svg+=`<circle class="terminal" cx="${pin.x-geo.COMB_LEN}" cy="${pin.y}" r="3.6"/>`;
       } else {
         const rx=geo.railX[lit];
+        // The whole wire (not just the pin-side dot) is a click target for
+        // removal, via a wide invisible hit-path — same delete action as
+        // clicking the wired pin, just easier to hit and easier to discover
+        // (hover highlights the wire red, signaling "click to remove").
+        svg+=`<g class="sop-wire-unit">`;
         svg+=`<path class="sop-wire" d="M ${rx} ${pin.y} H ${pin.x}"/>`;
         svg+=`<circle class="sop-tap-dot" cx="${rx}" cy="${pin.y}" r="3"/>`;
+        svg+=`<path class="sop-wire-hit" data-gate="${g}" data-pin="${i}" d="M ${rx} ${pin.y} H ${pin.x}"/>`;
+        svg+=`</g>`;
       }
       if(isSnapPin(g,i)) svg+=`<circle class="sop-snap-dot" cx="${pin.x}" cy="${pin.y}" r="4.5"/>`;
     }
@@ -347,6 +354,16 @@ function sopRenderCanvas(){
     });
   });
 
+  svgEl.querySelectorAll(".sop-wire-hit").forEach(el=>{
+    el.style.touchAction="none";
+    el.addEventListener("pointerdown",e=>{
+      if(e.pointerType==="mouse" && e.button!==0) return;
+      e.preventDefault(); e.stopPropagation();
+      sop.answer[+el.dataset.gate].pins[+el.dataset.pin]=null;
+      sopInvalidate();
+    });
+  });
+
   svgEl.querySelectorAll(".terminal-hot").forEach(el=>{
     el.style.touchAction="none";
     el.addEventListener("pointerdown",e=>{
@@ -366,14 +383,6 @@ function sopRenderCanvas(){
     });
   });
 
-  sopRenderToolbar();
-}
-
-function sopRenderToolbar(){
-  const total=sop.geom.k*sop.geom.n;
-  const filled=sop.answer.reduce((sum,g)=>sum+g.pins.filter(x=>x!=null).length,0);
-  document.getElementById("sop-canvas-toolbar").innerHTML=
-    `<div class="schem-status">${filled}/${total} pins wired. Drag from a literal's line to an empty AND-gate pin; click a wired pin to remove it.</div>`;
 }
 
 /* ---- pointer-gesture plumbing (rail -> pin drag only; no placement/move) ---- */
@@ -474,11 +483,11 @@ function sopCheck(){
   const msgs=[];
 
   if(g.incomplete){
-    msgs.push({s:"info",t:`${g.incomplete} AND gate${g.incomplete===1?" isn't":"s aren't"} fully wired yet — every gate needs exactly one literal (the variable or its complement) on each input, covering every variable once.`});
+    msgs.push({s:"info",t:`${g.incomplete} AND gate${g.incomplete===1?" isn't":"s aren't"} fully wired yet. Every gate needs exactly one signal (the variable or its complement) on each input, covering every variable once.`});
   } else if(g.duplicate){
-    msgs.push({s:"warn",t:`Two AND gates are wired to the same product term — each row where Y=1 should be covered exactly once, by exactly one gate.`});
+    msgs.push({s:"warn",t:`Two AND gates are wired to the same product term. Each row where Y=1 should be covered exactly once, by exactly one gate.`});
   } else if(g.wrong){
-    msgs.push({s:"warn",t:`${g.wrong} AND gate${g.wrong===1?" doesn't":"s don't"} match any row where Y=1 — check the truth table row that gate should implement, then use the true line for a 1 and the complement line for a 0.`});
+    msgs.push({s:"warn",t:`${g.wrong} AND gate${g.wrong===1?" doesn't":"s don't"} match any row where Y=1. Check the truth table row that gate should implement, then use the true line for a 1 and the complement line for a 0.`});
   } else if(g.missing){
     msgs.push({s:"warn",t:`${g.missing} row${g.missing===1?"":"s"} where Y=1 ${g.missing===1?"isn't":"aren't"} covered by any AND gate yet.`});
   }
@@ -488,7 +497,7 @@ function sopCheck(){
   document.getElementById("sop-actions").style.display=g.correct?"none":"flex";
   document.getElementById("sop-complete-actions").style.display=g.correct?"flex":"none";
 
-  if(g.correct) msgs.push({s:"success",t:"Correct — every AND gate implements one canonical product term, and together they sum to exactly the given truth table."});
+  if(g.correct) msgs.push({s:"success",t:"Correct!Every AND gate implements one canonical product term, and together they sum to exactly the given truth table."});
 
   sopRenderCanvas();
   sopShowFeedback(msgs);

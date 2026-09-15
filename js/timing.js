@@ -1,10 +1,10 @@
 /* ============================================================
    TIMING DIAGRAM PROBLEM TYPE  —  5-stage guided problem
-   for the fixed inverter (Va→Vx) → NOR (Vx,Vb→Vy) circuit.
+   for the fixed inverter (Va→Vx) → NAND (Vx,Vb→Vy) circuit.
 
    Stage A : complete the logic truth table
    Stage B : draw Vx, Vy — zero-delay model
-   Stage C : draw Vx, Vy — constant delay (t_inv, t_nor)
+   Stage C : draw Vx, Vy — constant delay (t_inv, t_nand)
    Stage D : draw Vx, Vy — input-dependent delay (t_a→x, t_b→y, t_x→y)
    Stage E : draw Vx, Vy — transition- & input-dependent delay
 
@@ -20,6 +20,7 @@ const timing = {
   tbl:null,           // stage A answers
   draw:null,          // {B:{Vx,Vy}, C:..., D:..., E:...}
   expected:null,      // {B:{Vx,Vy}, ...} correct waveforms
+  undo:null,          // {B:[{Vx,Vy},...], C:..., ...} per-stage undo stacks
   dragging:false, dragSig:null, drawValue:null, lastBin:null
 };
 
@@ -27,7 +28,7 @@ const timing = {
 const TSTEP=10, TDUR=160, TN=TDUR/TSTEP;                 // 16 bins of 10 ps
 const TVA=[0,0,0,1,1,1,1,1,0,0,0,0,1,1,1,1];             // rises 30, falls 80, rises 120
 const TVB=[1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0];             // falls 40
-const TDELAY={ inv:10, nor:20, ax:10, by:20, xy:10,
+const TDELAY={ inv:10, nand:20, ax:10, by:20, xy:10,
                ax_hl:10, ax_lh:20, by_hl:20, by_lh:30, xy_hl:10, xy_lh:30 };
 
 const TCOLS=[
@@ -39,24 +40,22 @@ const TSTAGES=[
   { key:"A", kind:"table", num:"6.A", title:"Logic behaviour",
     desc:"Get to know the circuit by completing its truth table.",
     instr:"As a first step, complete the table to get to know the logical behaviour of this circuit. Label closed transistors with <b>C</b> and leave cells of open transistors empty.",
-    model:null,
-    modelText:"Read each node from the switches: a <b>PMOS</b> conducts when its gate is <b>0&nbsp;V</b>; an <b>NMOS</b> conducts when its gate is <b>3.3&nbsp;V</b>." },
+    model:null },
   { key:"B", kind:"draw", model:"zero", num:"6.B", title:"Timing diagram — zero-delay model",
     desc:"Draw V\u2093 and V\u1d67 assuming no gate delay.",
-    instr:"Complete the timing diagram for a <b>zero-delay model</b>. Remember from Topic 1 that voltages change <i>continuously</i> between levels — they never jump instantly from one level to the other.",
-    modelText:"Zero-delay model. Output changes occur immediately when the logical inputs change." },
+    instr:"Complete the timing diagram for a <b>zero-delay model</b>. Remember from Topic 1 that voltages change <i>continuously</i> between levels — they never jump instantly from one level to the other." },
   { key:"C", kind:"draw", model:"const", num:"6.C", title:"Timing diagram — constant-delay model",
     desc:"Draw V\u2093 and V\u1d67 with a fixed gate delay.",
-    instr:"Complete the timing diagram for a <b>constant-delay model</b>. Use a delay of t<sub>inv</sub>&nbsp;=&nbsp;10&nbsp;ps for the inverter and t<sub>nor</sub>&nbsp;=&nbsp;20&nbsp;ps for the NOR gate.",
-    modelText:"Constant delay.<br>Inverter: <b>10 ps</b><br>NOR: <b>20 ps</b>" },
+    instr:"Complete the timing diagram for a <b>constant-delay model</b>. Use the delays below for the inverter and the NAND gate.",
+    delays:["t<sub>inv</sub> = <b>10 ps</b>","t<sub>nand</sub> = <b>20 ps</b>"] },
   { key:"D", kind:"draw", model:"inputdep", num:"6.D", title:"Timing diagram — input-dependent constant delay",
     desc:"Draw V\u2093 and V\u1d67 with per-path delays.",
-    instr:"Complete the timing diagram for an <b>input-dependent constant-delay model</b>. Use t<sub>a\u2192x</sub>&nbsp;=&nbsp;10&nbsp;ps; t<sub>b\u2192y</sub>&nbsp;=&nbsp;20&nbsp;ps; t<sub>x\u2192y</sub>&nbsp;=&nbsp;10&nbsp;ps.",
-    modelText:"Input-dependent delay.<br>a\u2192x: <b>10 ps</b><br>b\u2192y: <b>20 ps</b><br>x\u2192y: <b>10 ps</b>" },
+    instr:"Complete the timing diagram for an <b>input-dependent constant-delay model</b>. Use the per-path delays below.",
+    delays:["t<sub>a\u2192x</sub> = <b>10 ps</b>","t<sub>b\u2192y</sub> = <b>20 ps</b>","t<sub>x\u2192y</sub> = <b>10 ps</b>"] },
   { key:"E", kind:"draw", model:"trans", num:"6.E", title:"Timing diagram — transition- & input-dependent delay",
     desc:"Draw V\u2093 and V\u1d67 with per-path, per-edge delays.",
-    instr:"Complete the timing diagram for a <b>transition- and input-dependent delay model</b>. The delay depends on the direction of the resulting output edge: t<sub>a\u2192x,hl</sub>=10, t<sub>a\u2192x,lh</sub>=20, t<sub>b\u2192y,hl</sub>=20, t<sub>b\u2192y,lh</sub>=30, t<sub>x\u2192y,hl</sub>=10, t<sub>x\u2192y,lh</sub>=30&nbsp;ps.",
-    modelText:"Transition- & input-dependent.<br>a\u2192x: 10 / 20 ps (hl / lh)<br>b\u2192y: 20 / 30 ps<br>x\u2192y: 10 / 30 ps" }
+    instr:"Complete the timing diagram for a <b>transition- and input-dependent delay model</b>. The delay depends on the direction of the resulting output edge \u2014 use the per-path, per-edge delays below.",
+    delays:["t<sub>a\u2192x,hl</sub> = <b>10 ps</b>","t<sub>a\u2192x,lh</sub> = <b>20 ps</b>","t<sub>b\u2192y,hl</sub> = <b>20 ps</b>","t<sub>b\u2192y,lh</sub> = <b>30 ps</b>","t<sub>x\u2192y,hl</sub> = <b>10 ps</b>","t<sub>x\u2192y,lh</sub> = <b>30 ps</b>"] }
 ];
 
 /* ============================================================
@@ -73,7 +72,7 @@ function tBins(edges,n){
   for(let i=0;i<n;i++){ const t=i*TSTEP; let v=es[0].v; for(const e of es){ if(e.t<=t) v=e.v; else break; } out[i]=v; }
   return out;
 }
-function tNor(a,b){ return (a===0 && b===0) ? 1 : 0; }
+function tNand(a,b){ return (a===1 && b===1) ? 0 : 1; }
 
 /* Vx = NOT Va, delayed per model. */
 function tComputeVx(model){
@@ -91,20 +90,21 @@ function tComputeVx(model){
 }
 function tDelayVy(model,path,dir){
   if(model==="zero") return 0;
-  if(model==="const") return TDELAY.nor;
+  if(model==="const") return TDELAY.nand;
   if(model==="inputdep") return path==="x"?TDELAY.xy:TDELAY.by;
   if(path==="x") return dir==="lh"?TDELAY.xy_lh:TDELAY.xy_hl;
   return dir==="lh"?TDELAY.by_lh:TDELAY.by_hl;
 }
-/* Vy = NOR(Vx, Vb), each output edge delayed by the path + direction that
-   caused it. Simultaneous causes: a rising NOR (needs both inputs low) waits
-   for the slower path; a falling NOR (either input high) follows the faster. */
+/* Vy = NAND(Vx, Vb), each output edge delayed by the path + direction that
+   caused it. Simultaneous causes: a falling NAND (needs both inputs high)
+   waits for the slower path; a rising NAND (either input low) follows the
+   faster one. */
 function tComputeVy(model,vxBins){
   const ev=[];
   tEdges(vxBins).slice(1).forEach(e=>ev.push({t:e.t,path:"x",v:e.v}));
   tEdges(TVB).slice(1).forEach(e=>ev.push({t:e.t,path:"b",v:e.v}));
   ev.sort((a,b)=>a.t-b.t);
-  let curVx=vxBins[0], curVb=TVB[0], ideal=tNor(curVx,curVb);
+  let curVx=vxBins[0], curVb=TVB[0], ideal=tNand(curVx,curVb);
   const edges=[{t:0,v:ideal}];
   let i=0;
   while(i<ev.length){
@@ -112,11 +112,11 @@ function tComputeVy(model,vxBins){
     while(i<ev.length && ev[i].t===t){ group.push(ev[i]); i++; }
     const before=ideal;
     group.forEach(e=>{ if(e.path==="x") curVx=e.v; else curVb=e.v; });
-    const after=tNor(curVx,curVb);
+    const after=tNand(curVx,curVb);
     if(after!==before){
       const dir=after?"lh":"hl";
       const ds=group.map(e=>tDelayVy(model,e.path,dir));
-      const d = after===1 ? Math.max(...ds) : Math.min(...ds);
+      const d = after===0 ? Math.max(...ds) : Math.min(...ds);
       edges.push({t:t+d, v:after});
       ideal=after;
     } else ideal=after;
@@ -125,108 +125,111 @@ function tComputeVy(model,vxBins){
 }
 function tComputeWaves(model){ const Vx=tComputeVx(model); return {Vx, Vy:tComputeVy(model,Vx)}; }
 
-/* Stage-A truth: closed switches + node voltages per input row. */
+/* Stage-A truth: closed switches + node voltages per input row.
+   Second stage is a NAND: P1/P2 (gated by Vx/Vb) sit in parallel between
+   VDD and Vy, while N1/N2 (gated by Vx/Vb) sit in series between Vy and
+   ground — Vy pulls low only when both N1 and N2 conduct. */
 function tTruthRows(){
   const rows=[{Va:0,Vb:0},{Va:0,Vb:3.3},{Va:3.3,Vb:0},{Va:3.3,Vb:3.3}];
   return rows.map(r=>{
     const Vx=r.Va===0?3.3:0;
-    const Vy=(Vx===0 && r.Vb===0)?3.3:0;
+    const Vy=(Vx===3.3 && r.Vb===3.3)?0:3.3;
     return { Va:r.Va, Vb:r.Vb, Vx, Vy,
       closed:{ P0:r.Va===0, N0:r.Va===3.3, P1:Vx===0, P2:r.Vb===0, N1:Vx===3.3, N2:r.Vb===3.3 } };
   });
 }
 function tFmt(v){ return v===3.3?"3.3V":v===0?"0V":v; }
 
+/* Render a column key like "Va"/"Vx"/"P0"/"N2" with a real <sub> suffix,
+   matching the course's hand-drawn V_a / P_0 style table headers. A real
+   <sub> element (rather than lookalike Unicode "subscript" letters, which
+   don't exist for every letter and render inconsistently — some are actually
+   superscript modifier letters, e.g. U+1D47, and some substitute a different
+   glyph entirely, e.g. U+1D67 is Greek gamma, not a Latin y) keeps every
+   column heading visually consistent. */
+function tSubscriptLabel(key){
+  return key.length>1 ? key[0]+"<sub>"+key.slice(1)+"</sub>" : key;
+}
+
 /* ============================================================
    Circuit schematic (fixed) — annotated with the stage's delays
    ============================================================ */
 function renderTimingCircuit(){
-  const s=TSTAGES[timing.stage];
-  const showConst = s && s.model==="const";
-  const invDelay = showConst?TDELAY.inv:null;
-  const norDelay = showConst?TDELAY.nor:null;
-
   const svg = `
-    <svg class="timing-circuit-svg" viewBox="0 0 760 300" role="img"
-      aria-label="A CMOS inverter driven by Va produces Vx. Vx and Vb drive a CMOS NOR gate that produces Vy."
+    <svg class="timing-circuit-svg" viewBox="0 0 580 400" role="img"
+      aria-label="A CMOS inverter driven by Va produces Vx. Vx and Vb drive a CMOS NAND gate that produces Vy."
       xmlns="http://www.w3.org/2000/svg">
 
       <!-- Stage 1: CMOS inverter -->
-      <line class="timing-circuit-wire" x1="88" y1="30" x2="272" y2="30"/>
-      <text class="timing-circuit-label" x="94" y="20">VDD</text>
+      <line class="timing-circuit-wire" x1="130" y1="40" x2="170" y2="40"/>
 
-      <line class="timing-circuit-wire" x1="180" y1="30" x2="180" y2="60"/>
-      <path class="timing-circuit-trans" d="M180 60 V66 H175 V96 H180 V125"/>
-      <line class="timing-circuit-trans" x1="164" y1="66" x2="164" y2="96"/>
-      <line class="timing-circuit-wire" x1="112" y1="81" x2="155" y2="81"/>
-      <circle class="timing-circuit-bubble" cx="160" cy="81" r="4"/>
-      <text class="timing-circuit-label" x="190" y="80">P0</text>
+      <line class="timing-circuit-wire" x1="150" y1="40" x2="150" y2="70"/>
+      <path class="timing-circuit-trans" d="M150 70 V80 H142 V120 H150 V140"/>
+      <line class="timing-circuit-trans" x1="128" y1="80" x2="128" y2="120"/>
+      <circle class="timing-circuit-bubble" cx="122" cy="100" r="5"/>
+      <text class="timing-circuit-label" x="162" y="105">P0</text>
 
-      <path class="timing-circuit-trans" d="M180 125 V148 H175 V178 H180 V220"/>
-      <line class="timing-circuit-trans" x1="164" y1="148" x2="164" y2="178"/>
-      <line class="timing-circuit-wire" x1="112" y1="163" x2="164" y2="163"/>
-      <text class="timing-circuit-label" x="190" y="162">N0</text>
+      <path class="timing-circuit-trans" d="M150 140 V150 H142 V190 H150 V210"/>
+      <line class="timing-circuit-trans" x1="128" y1="150" x2="128" y2="190"/>
+      <text class="timing-circuit-label" x="162" y="175">N0</text>
 
-      <line class="timing-circuit-wire" x1="68" y1="122" x2="112" y2="122"/>
-      <line class="timing-circuit-wire" x1="112" y1="81" x2="112" y2="163"/>
-      <text class="timing-circuit-label" x="40" y="126">V<tspan baseline-shift="sub" font-size="9">a</tspan></text>
+      <line class="timing-circuit-wire" x1="48" y1="135" x2="90" y2="135"/>
+      <circle class="timing-circuit-node" cx="90" cy="135" r="4"/>
+      <line class="timing-circuit-wire" x1="90" y1="100" x2="90" y2="170"/>
+      <line class="timing-circuit-wire" x1="90" y1="100" x2="117" y2="100"/>
+      <line class="timing-circuit-wire" x1="90" y1="170" x2="128" y2="170"/>
+      <text class="timing-circuit-net-label" x="12" y="143">V<tspan baseline-shift="sub" font-size="14">a</tspan></text>
 
-      <circle class="timing-circuit-node" cx="180" cy="125" r="3.7"/>
-      <line class="timing-circuit-wire" x1="180" y1="125" x2="360" y2="125"/>
-      <text class="timing-circuit-label" x="236" y="115">V<tspan baseline-shift="sub" font-size="9">x</tspan></text>
+      <circle class="timing-circuit-node" cx="150" cy="140" r="4.5"/>
+      <line class="timing-circuit-wire" x1="150" y1="140" x2="260" y2="140"/>
+      <text class="timing-circuit-net-label" x="205" y="128" text-anchor="middle">V<tspan baseline-shift="sub" font-size="14">x</tspan></text>
 
-      <!-- Vx branches directly to the P1 and N1 gates -->
-      <circle class="timing-circuit-node" cx="360" cy="125" r="3.2"/>
-      <line class="timing-circuit-wire" x1="360" y1="75" x2="360" y2="203"/>
-      <line class="timing-circuit-wire" x1="360" y1="75" x2="515" y2="75"/>
-      <line class="timing-circuit-wire" x1="360" y1="203" x2="464" y2="203"/>
+      <line class="timing-circuit-wire" x1="150" y1="210" x2="150" y2="238"/>
+      <path class="timing-circuit-ground" d="M138 238 L162 238 L150 258 Z"/>
 
-      <line class="timing-circuit-wire" x1="180" y1="220" x2="180" y2="232"/>
-      <line class="timing-circuit-wire" x1="158" y1="232" x2="202" y2="232"/>
-      <line class="timing-circuit-wire" x1="164" y1="240" x2="196" y2="240"/>
-      <line class="timing-circuit-wire" x1="171" y1="248" x2="189" y2="248"/>
-      ${invDelay!=null ? `<text class="timing-circuit-delay" x="138" y="276">t_inv = ${invDelay} ps</text>` : ""}
+      <!-- Stage 2: CMOS NAND — P1/P2 in parallel (pull-up), N1/N2 in series (pull-down).
+           P1 and P2 are separate parallel branches, so each gets its own independent
+           VDD tick instead of a shared rail. -->
+      <line class="timing-circuit-wire" x1="305" y1="40" x2="345" y2="40"/>
 
-      <!-- Stage 2: CMOS NOR -->
-      <line class="timing-circuit-wire" x1="398" y1="30" x2="680" y2="30"/>
-      <text class="timing-circuit-label" x="646" y="20">VDD</text>
+      <line class="timing-circuit-wire" x1="325" y1="40" x2="325" y2="70"/>
+      <path class="timing-circuit-trans" d="M325 70 V80 H317 V120 H325 V140"/>
+      <line class="timing-circuit-trans" x1="303" y1="80" x2="303" y2="120"/>
+      <circle class="timing-circuit-bubble" cx="297" cy="100" r="5"/>
+      <text class="timing-circuit-label" x="337" y="105">P1</text>
 
-      <line class="timing-circuit-wire" x1="540" y1="30" x2="540" y2="56"/>
-      <path class="timing-circuit-trans" d="M540 56 V62 H535 V88 H540 V104"/>
-      <line class="timing-circuit-trans" x1="524" y1="62" x2="524" y2="88"/>
-      <circle class="timing-circuit-bubble" cx="520" cy="75" r="4"/>
-      <text class="timing-circuit-label" x="552" y="76">P1</text>
+      <line class="timing-circuit-wire" x1="455" y1="40" x2="495" y2="40"/>
+      <line class="timing-circuit-wire" x1="475" y1="40" x2="475" y2="70"/>
+      <path class="timing-circuit-trans" d="M475 70 V80 H467 V120 H475 V140"/>
+      <line class="timing-circuit-trans" x1="453" y1="80" x2="453" y2="120"/>
+      <circle class="timing-circuit-bubble" cx="447" cy="100" r="5"/>
+      <text class="timing-circuit-label" x="487" y="105">P2</text>
+      <line class="timing-circuit-wire" x1="385" y1="100" x2="442" y2="100"/>
+      <text class="timing-circuit-net-label" x="400" y="85">V<tspan baseline-shift="sub" font-size="14">b</tspan></text>
 
-      <path class="timing-circuit-trans" d="M540 104 V112 H535 V138 H540 V166"/>
-      <line class="timing-circuit-trans" x1="524" y1="112" x2="524" y2="138"/>
-      <line class="timing-circuit-wire" x1="466" y1="125" x2="515" y2="125"/>
-      <circle class="timing-circuit-bubble" cx="520" cy="125" r="4"/>
-      <text class="timing-circuit-label" x="552" y="126">P2</text>
-      <text class="timing-circuit-label" x="438" y="129">V<tspan baseline-shift="sub" font-size="9">b</tspan></text>
+      <line class="timing-circuit-wire" x1="325" y1="140" x2="475" y2="140"/>
+      <circle class="timing-circuit-node" cx="400" cy="140" r="4.5"/>
+      <line class="timing-circuit-wire" x1="400" y1="140" x2="500" y2="140"/>
+      <text class="timing-circuit-net-label" x="510" y="150">V<tspan baseline-shift="sub" font-size="14">y</tspan></text>
 
-      <circle class="timing-circuit-node" cx="540" cy="166" r="3.7"/>
-      <line class="timing-circuit-wire" x1="540" y1="166" x2="696" y2="166"/>
-      <text class="timing-circuit-label" x="706" y="170">V<tspan baseline-shift="sub" font-size="9">y</tspan></text>
+      <line class="timing-circuit-wire" x1="400" y1="140" x2="400" y2="170"/>
+      <path class="timing-circuit-trans" d="M400 170 V180 H392 V220 H400 V240"/>
+      <line class="timing-circuit-trans" x1="378" y1="180" x2="378" y2="220"/>
+      <text class="timing-circuit-label" x="412" y="205">N1</text>
 
-      <line class="timing-circuit-wire" x1="480" y1="166" x2="600" y2="166"/>
-      <line class="timing-circuit-wire" x1="480" y1="166" x2="480" y2="184"/>
-      <path class="timing-circuit-trans" d="M480 184 V190 H475 V216 H480 V232"/>
-      <line class="timing-circuit-trans" x1="464" y1="190" x2="464" y2="216"/>
-      <text class="timing-circuit-label" x="490" y="204">N1</text>
+      <path class="timing-circuit-trans" d="M400 240 V250 H392 V290 H400 V310"/>
+      <line class="timing-circuit-trans" x1="378" y1="250" x2="378" y2="290"/>
+      <text class="timing-circuit-label" x="412" y="275">N2</text>
 
-      <line class="timing-circuit-wire" x1="600" y1="166" x2="600" y2="184"/>
-      <path class="timing-circuit-trans" d="M600 184 V190 H595 V216 H600 V232"/>
-      <line class="timing-circuit-trans" x1="584" y1="190" x2="584" y2="216"/>
-      <line class="timing-circuit-wire" x1="536" y1="203" x2="584" y2="203"/>
-      <text class="timing-circuit-label" x="508" y="207">V<tspan baseline-shift="sub" font-size="9">b</tspan></text>
-      <text class="timing-circuit-label" x="610" y="204">N2</text>
+      <circle class="timing-circuit-node" cx="260" cy="140" r="4"/>
+      <line class="timing-circuit-wire" x1="260" y1="100" x2="260" y2="200"/>
+      <line class="timing-circuit-wire" x1="260" y1="100" x2="292" y2="100"/>
+      <line class="timing-circuit-wire" x1="260" y1="200" x2="378" y2="200"/>
+      <line class="timing-circuit-wire" x1="340" y1="270" x2="378" y2="270"/>
+      <text class="timing-circuit-net-label" x="300" y="278">V<tspan baseline-shift="sub" font-size="14">b</tspan></text>
 
-      <line class="timing-circuit-wire" x1="480" y1="232" x2="600" y2="232"/>
-      <line class="timing-circuit-wire" x1="540" y1="232" x2="540" y2="244"/>
-      <line class="timing-circuit-wire" x1="518" y1="244" x2="562" y2="244"/>
-      <line class="timing-circuit-wire" x1="524" y1="252" x2="556" y2="252"/>
-      <line class="timing-circuit-wire" x1="531" y1="260" x2="549" y2="260"/>
-      ${norDelay!=null ? `<text class="timing-circuit-delay" x="500" y="286">t_nor = ${norDelay} ps</text>` : ""}
+      <line class="timing-circuit-wire" x1="400" y1="310" x2="400" y2="338"/>
+      <path class="timing-circuit-ground" d="M388 338 L412 338 L400 358 Z"/>
     </svg>
   `;
   const _c=tEl("timing-circuit"); if(_c) _c.innerHTML = svg;
@@ -243,11 +246,12 @@ function buildTiming(p){
   timing.dragging=false; timing.dragSig=null; timing.drawValue=null; timing.lastBin=null;
 
   timing.tbl=tTruthRows().map(()=>({marks:new Set(), V:{Vx:null,Vy:null}}));
-  timing.draw={}; timing.expected={};
+  timing.draw={}; timing.expected={}; timing.undo={};
   TSTAGES.forEach(s=>{
     if(s.kind==="draw"){
       timing.draw[s.key]={Vx:Array(TN).fill(null), Vy:Array(TN).fill(null)};
       timing.expected[s.key]=tComputeWaves(s.model);
+      timing.undo[s.key]=[];
     }
   });
 
@@ -255,6 +259,7 @@ function buildTiming(p){
   if(clr) clr.onclick=()=>{
     const s=TSTAGES[timing.stage];
     if(s.kind!=="draw") return;
+    tPushUndo(s.key);
     timing.draw[s.key].Vx.fill(null);
     timing.draw[s.key].Vy.fill(null);
     timing.verdict=false;
@@ -262,6 +267,9 @@ function buildTiming(p){
     tShow("timing-feedback-card","none");
     timingRefresh();
   };
+
+  const undoBtn=document.getElementById("timing-undo");
+  if(undoBtn) undoBtn.onclick=timingUndo;
 
   timingRefresh();
   tShow("timing-feedback-card","none");
@@ -273,25 +281,34 @@ function timingRefresh(){
   tSetText("timing-stage-title", s.title);
   tSetText("timing-stage-desc", s.desc);
   tSetHTML("timing-instruction", s.instr);
-  tSetHTML("timing-model-text", s.modelText);
+  const chips=document.getElementById("timing-delay-chips");
+  if(chips){
+    if(s.delays){ chips.innerHTML=s.delays.map(d=>`<span class="timing-delay-chip">${d}</span>`).join(""); chips.style.display=""; }
+    else { chips.innerHTML=""; chips.style.display="none"; }
+  }
 
   renderTimingStagebar();
   renderTimingCircuit();
 
   const tbl=document.getElementById("timing-table");
   const diag=document.getElementById("timing-diagram-wrap");
+  const ref=document.getElementById("timing-tableref-col");
   if(s.kind==="table"){
     if(tbl) tbl.style.display="";
     if(diag) diag.style.display="none";
+    if(ref) ref.style.display="none";
     renderTimingTable();
   } else {
     if(tbl) tbl.style.display="none";
     if(diag) diag.style.display="";
+    if(ref) ref.style.display="";
     renderTimingDiagram();
+    renderTimingTableRef();
   }
 
   timingRenderActions();
   timingUpdateCardState();
+  timingUpdateUndoButton();
 }
 function tSetText(id,t){ const e=document.getElementById(id); if(e) e.textContent=t; }
 function tSetHTML(id,h){ const e=document.getElementById(id); if(e) e.innerHTML=h; }
@@ -348,6 +365,37 @@ function timingPrev(){ if(timing.stage>0) timingGoStage(timing.stage-1); }
 function timingNext(){ if(timing.completed.has(timing.stage) && timing.stage<TSTAGES.length-1) timingGoStage(timing.stage+1); }
 function timingExploreMoreProblems(){ const b=document.getElementById("crumb-back-chapter"); if(b) b.click(); }
 
+/* Per-stage undo history for the drawing stages: one snapshot of both rows
+   per gesture (a single click, or a whole drag stroke), pushed once before
+   the gesture's first edit so "Undo" reverts the whole stroke at once. */
+function tPushUndo(key){
+  const stack=timing.undo[key] || (timing.undo[key]=[]);
+  stack.push({Vx:timing.draw[key].Vx.slice(), Vy:timing.draw[key].Vy.slice()});
+  if(stack.length>100) stack.shift();
+  timingUpdateUndoButton();
+}
+function timingUndo(){
+  const s=TSTAGES[timing.stage];
+  if(s.kind!=="draw") return;
+  const stack=timing.undo[s.key];
+  if(!stack || !stack.length) return;
+  timing.draw[s.key]=stack.pop();
+  timing.verdict=false;
+  timing.completed.delete(timing.stage);
+  tShow("timing-feedback-card","none");
+  renderTimingDiagram();
+  timingRenderActions();
+  timingUpdateCardState();
+  timingUpdateUndoButton();
+}
+function timingUpdateUndoButton(){
+  const btn=document.getElementById("timing-undo");
+  if(!btn) return;
+  const s=TSTAGES[timing.stage];
+  const stack=s.kind==="draw" ? timing.undo[s.key] : null;
+  btn.disabled = !stack || !stack.length;
+}
+
 /* ============================================================
    Stage A — truth table
    ============================================================ */
@@ -355,8 +403,8 @@ function renderTimingTable(){
   const truth=tTruthRows();
   let html=`<table class="simtable"><thead><tr>`;
   TCOLS.forEach(c=>{
-    const cls=c.kind==="in"?"grp-in":(c.key[0]==="P"?"grp-p":(c.key[0]==="N"?"grp-n":""));
-    const lbl=c.key.replace(/^V([axyb])$/,(m,g)=>"V"+({a:"\u2090",x:"\u2093",b:"\u1d47",y:"\u1d67"}[g]||g));
+    const cls=c.kind==="in"?"grp-in":c.kind==="node"?"grp-node":(c.key[0]==="P"?"grp-p":"grp-n");
+    const lbl=tSubscriptLabel(c.key);
     html+=`<th class="${cls}">${lbl}</th>`;
   });
   html+=`</tr></thead><tbody>`;
@@ -398,6 +446,35 @@ function renderTimingTable(){
   }));
 }
 
+/* Read-only reference copy of the stage-A truth table, shown in the sidebar
+   during the drawing stages (B–E) so students can check the circuit's
+   logical behaviour without leaving the diagram. Always shows the correct
+   answer — no student state, no click handlers. */
+function renderTimingTableRef(){
+  const host=document.getElementById("timing-table-ref");
+  if(!host) return;
+  const truth=tTruthRows();
+  let html=`<table class="simtable"><thead><tr>`;
+  TCOLS.forEach(c=>{
+    const cls=c.kind==="in"?"grp-in":c.kind==="node"?"grp-node":(c.key[0]==="P"?"grp-p":"grp-n");
+    html+=`<th class="${cls}">${tSubscriptLabel(c.key)}</th>`;
+  });
+  html+=`</tr></thead><tbody>`;
+  truth.forEach(row=>{
+    html+=`<tr>`;
+    TCOLS.forEach(c=>{
+      if(c.kind==="in" || c.kind==="node"){
+        html+=`<td>${tFmt(row[c.key])}</td>`;
+      } else {
+        html+=`<td class="${row.closed[c.key]?"tcell c":"tcell"}">${row.closed[c.key]?"C":""}</td>`;
+      }
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table>`;
+  host.innerHTML=html;
+}
+
 /* invalidate the current stage's verdict on any edit */
 function timingInvalidate(){
   timing.verdict=false;
@@ -414,8 +491,8 @@ const TSIGNALS=["Va","Vx","Vb","Vy"];
 const TGIVEN={Va:TVA, Vb:TVB};
 const TDRAWABLE=["Vx","Vy"];
 
-function timingPath(bins,left,y0,rowH,binW){
-  const hi=y0+10, lo=y0+rowH-10, slant=Math.min(9,binW*0.35);
+function timingPath(bins,left,hi,lo,binW){
+  const slant=Math.min(9,binW*0.35);
   let d="",started=false,prevY=null;
   for(let i=0;i<bins.length;i++){
     const v=bins[i];
@@ -432,48 +509,56 @@ function timingPath(bins,left,y0,rowH,binW){
 function renderTimingDiagram(){
   const s=TSTAGES[timing.stage];
   const draw=timing.draw[s.key], expected=timing.expected[s.key];
-  const W=760,left=94,right=24,top=16,rowH=62;
+  const W=760,left=94,right=24,top=16;
   const plotW=W-left-right, binW=plotW/TN;
-  const H=top+rowH*TSIGNALS.length+40;
+  // Every vertical band in the diagram is sized off the same square cell
+  // (one bin's width): a signal's own hi/lo swing is exactly one cell tall,
+  // and the gap to the next signal is exactly one more cell, so no band
+  // (whether it's "inside" a signal or "between" two signals) is ever a
+  // different height than any other.
+  const cell=binW, rowSwing=cell, rowGap=cell, rowPitch=rowSwing+rowGap;
+  const plotBottom=top+rowPitch*(TSIGNALS.length-1)+rowSwing;
+  const H=plotBottom+40;
 
   const geom={};
-  TSIGNALS.forEach((name,ri)=>{ const y0=top+ri*rowH; geom[name]={y0,hi:y0+10,lo:y0+rowH-10,mid:y0+rowH/2}; });
+  TSIGNALS.forEach((name,ri)=>{ const y0=top+ri*rowPitch; geom[name]={y0,hi:y0,lo:y0+rowSwing,mid:y0+rowSwing/2}; });
 
   let svg=`<svg class="timing-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
 
   for(let i=0;i<=TN;i++){
     const x=left+i*binW;
-    svg+=`<line class="timing-grid" x1="${x}" y1="${top}" x2="${x}" y2="${top+rowH*TSIGNALS.length}"/>`;
+    svg+=`<line class="timing-grid" x1="${x}" y1="${top}" x2="${x}" y2="${plotBottom}"/>`;
   }
+  svg+=`<line class="timing-axis" x1="${left}" y1="${top}" x2="${left}" y2="${plotBottom}"/>`;
 
   TSIGNALS.forEach((name)=>{
     const g=geom[name];
     svg+=`<line class="timing-grid" x1="${left}" y1="${g.hi}" x2="${W-right}" y2="${g.hi}"/>`;
     svg+=`<line class="timing-grid" x1="${left}" y1="${g.lo}" x2="${W-right}" y2="${g.lo}"/>`;
-    const lbl="V"+({Va:"\u2090",Vx:"\u2093",Vb:"\u1d47",Vy:"\u1d67"}[name]||"");
-    svg+=`<text class="timing-label" x="${left-52}" y="${g.mid+4}">${lbl}</text>`;
+    svg+=`<text class="timing-label" x="${left-52}" y="${g.mid+4}">V<tspan baseline-shift="sub" font-size="9">${name[1]}</tspan></text>`;
     svg+=`<text class="timing-small" x="${left-7}" y="${g.hi+3}" text-anchor="end">3.3V</text>`;
     svg+=`<text class="timing-small" x="${left-7}" y="${g.lo+3}" text-anchor="end">0V</text>`;
 
     if(TGIVEN[name]){
-      svg+=`<path class="timing-wave-given" d="${timingPath(TGIVEN[name],left,g.y0,rowH,binW)}"/>`;
+      svg+=`<path class="timing-wave-given" d="${timingPath(TGIVEN[name],left,g.hi,g.lo,binW)}"/>`;
     } else {
       if(timing.verdict){
-        svg+=`<path class="timing-wave-expected" d="${timingPath(expected[name],left,g.y0,rowH,binW)}"/>`;
+        svg+=`<path class="timing-wave-expected" d="${timingPath(expected[name],left,g.hi,g.lo,binW)}"/>`;
       }
-      svg+=`<path class="timing-wave-answer" id="ans-${name}" d="${timingPath(draw[name],left,g.y0,rowH,binW)}"/>`;
+      svg+=`<path class="timing-wave-answer" id="ans-${name}" d="${timingPath(draw[name],left,g.hi,g.lo,binW)}"/>`;
       svg+=`<path class="timing-hover-preview" id="prev-${name}" d=""/>`;
       svg+=`<circle class="timing-hover-dot" id="dot-${name}" cx="0" cy="0" r="4" style="display:none"/>`;
-      svg+=`<rect class="timing-hit" id="hit-${name}" data-sig="${name}" x="${left}" y="${g.y0}" width="${plotW}" height="${rowH}"/>`;
+      svg+=`<line class="timing-erase-edge" id="erase-${name}" x1="0" y1="0" x2="0" y2="0" style="display:none"/>`;
+      svg+=`<rect class="timing-hit" id="hit-${name}" data-sig="${name}" x="${left}" y="${g.y0}" width="${plotW}" height="${rowSwing}"/>`;
     }
   });
 
   for(let t=20;t<TDUR;t+=20){
     const x=left+(t/TDUR)*plotW;
-    svg+=`<text class="timing-small" x="${x}" y="${top+rowH*TSIGNALS.length+20}" text-anchor="middle">${t}ps</text>`;
+    svg+=`<text class="timing-small" x="${x}" y="${plotBottom+20}" text-anchor="middle">${t}ps</text>`;
   }
-  svg+=`<line class="timing-axis" x1="${left}" y1="${top+rowH*TSIGNALS.length+4}" x2="${W-right}" y2="${top+rowH*TSIGNALS.length+4}"/>`;
-  svg+=`<text class="timing-small" x="${W-right}" y="${top+rowH*TSIGNALS.length+20}" text-anchor="end">time</text>`;
+  svg+=`<line class="timing-axis" x1="${left}" y1="${plotBottom+4}" x2="${W-right}" y2="${plotBottom+4}"/>`;
+  svg+=`<text class="timing-small" x="${W-right}" y="${plotBottom+20}" text-anchor="end">time</text>`;
   svg+=`</svg>`;
 
   const host=document.getElementById("timing-canvas");
@@ -487,41 +572,73 @@ function renderTimingDiagram(){
     return pt.matrixTransform(svgEl.getScreenCTM().inverse());
   }
 
+  const EDGE_ZONE=0.22; // fraction of a bin's width, on either side, that erases instead of draws
+  const ERASE_CURSOR=`url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><circle cx='10' cy='10' r='9' fill='%23d0343a' stroke='white' stroke-width='1.5'/><path d='M6 6L14 14M14 6L6 14' stroke='white' stroke-width='2' stroke-linecap='round'/></svg>") 10 10, pointer`;
+
   TDRAWABLE.forEach(sig=>{
     const g=geom[sig], arr=draw[sig];
     const hit=document.getElementById("hit-"+sig);
     const ans=document.getElementById("ans-"+sig);
     const prev=document.getElementById("prev-"+sig);
     const dot=document.getElementById("dot-"+sig);
+    const erase=document.getElementById("erase-"+sig);
     if(!hit) return;
 
-    const loc=e=>{ const pt=clientToSvg(e); const bin=Math.max(0,Math.min(TN-1,Math.floor((pt.x-left)/binW))); const val=pt.y<g.mid?1:0; return {bin,val}; };
-    const refresh=()=>ans.setAttribute("d",timingPath(arr,left,g.y0,rowH,binW));
-    const showPrev=(bin,val)=>{ if(timing.dragging) return; const y=val?g.hi:g.lo; const x0=left+bin*binW+3, x1=left+(bin+1)*binW-3; prev.setAttribute("d",`M ${x0} ${y} L ${x1} ${y}`); dot.setAttribute("cx",(x0+x1)/2); dot.setAttribute("cy",y); dot.style.display=""; };
-    const hidePrev=()=>{ prev.setAttribute("d",""); dot.style.display="none"; };
+    const loc=e=>{
+      const pt=clientToSvg(e);
+      const rel=(pt.x-left)/binW;
+      const bin=Math.max(0,Math.min(TN-1,Math.floor(rel)));
+      const frac=rel-bin;
+      const val=pt.y<g.mid?1:0;
+      const edge=(frac<EDGE_ZONE || frac>1-EDGE_ZONE) && arr[bin]!=null;
+      return {bin,val,edge};
+    };
+    const refresh=()=>ans.setAttribute("d",timingPath(arr,left,g.hi,g.lo,binW));
+    const showPrev=l=>{
+      if(timing.dragging) return;
+      if(l.edge){
+        prev.setAttribute("d",""); dot.style.display="none";
+        // Highlight the bin's own drawn segment (same y as its current level),
+        // right on top of the line that would be deleted.
+        const y=arr[l.bin]?g.hi:g.lo, x0=left+l.bin*binW, x1=left+(l.bin+1)*binW;
+        erase.setAttribute("x1",x0); erase.setAttribute("x2",x1);
+        erase.setAttribute("y1",y); erase.setAttribute("y2",y);
+        erase.style.display="";
+        hit.style.cursor=ERASE_CURSOR;
+      } else {
+        erase.style.display="none";
+        hit.style.cursor="";
+        const y=l.val?g.hi:g.lo, x0=left+l.bin*binW+3, x1=left+(l.bin+1)*binW-3;
+        prev.setAttribute("d",`M ${x0} ${y} L ${x1} ${y}`);
+        dot.setAttribute("cx",(x0+x1)/2); dot.setAttribute("cy",y); dot.style.display="";
+      }
+    };
+    const hidePrev=()=>{ prev.setAttribute("d",""); dot.style.display="none"; erase.style.display="none"; hit.style.cursor=""; };
     const paint=(a,b,val)=>{ const lo=Math.min(a,b),hi=Math.max(a,b); for(let i=lo;i<=hi;i++) arr[i]=val; timing.verdict=false; timing.completed.delete(timing.stage); tShow("timing-feedback-card","none"); refresh(); timingRenderActions(); timingUpdateCardState(); };
 
     hit.addEventListener("pointermove",e=>{
       const l=loc(e);
       if(timing.dragging && timing.dragSig===sig){
         if(l.bin!==timing.lastBin){ paint(timing.lastBin,l.bin,timing.drawValue); timing.lastBin=l.bin; }
-      } else if(!timing.dragging){ showPrev(l.bin,l.val); }
+      } else if(!timing.dragging){ showPrev(l); }
     });
-    hit.addEventListener("pointerenter",e=>{ if(!timing.dragging){ const l=loc(e); showPrev(l.bin,l.val); } });
+    hit.addEventListener("pointerenter",e=>{ if(!timing.dragging) showPrev(loc(e)); });
     hit.addEventListener("pointerleave",()=>{ if(!timing.dragging) hidePrev(); });
     hit.addEventListener("pointerdown",e=>{
       if(e.button!==0) return;
       e.preventDefault();
       const l=loc(e);
-      timing.dragging=true; timing.dragSig=sig; timing.drawValue=l.val; timing.lastBin=l.bin;
-      hidePrev(); paint(l.bin,l.bin,l.val);
+      const val = l.edge ? null : l.val;
+      tPushUndo(s.key);
+      timing.dragging=true; timing.dragSig=sig; timing.drawValue=val; timing.lastBin=l.bin;
+      hidePrev(); paint(l.bin,l.bin,val);
       try{ hit.setPointerCapture(e.pointerId); }catch(err){}
     });
     hit.addEventListener("pointerup",e=>{
       if(!timing.dragging) return;
       timing.dragging=false; timing.dragSig=null; timing.drawValue=null; timing.lastBin=null;
       try{ hit.releasePointerCapture(e.pointerId); }catch(err){}
-      const l=loc(e); showPrev(l.bin,l.val);
+      showPrev(loc(e));
     });
     hit.addEventListener("pointercancel",()=>{ timing.dragging=false; timing.dragSig=null; hidePrev(); });
   });

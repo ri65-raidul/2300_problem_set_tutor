@@ -67,7 +67,7 @@ const PROBLEMS = [
         {n:"Vx",p:[[350,200],[410,200]]},{n:"Vy",p:[[440,102],[440,134]]},{n:"Vy",p:[[440,178],[440,134]]},
         {n:"GND",p:[[440,222],[440,312]]},{n:"Vy",p:[[440,134],[461,134]]}
       ],
-      trans:{P0:{x:130,y:80},P1:{x:210,y:80},N0:{x:170,y:195},N1:{x:170,y:262},P2:{x:440,y:80},N2:{x:440,y:200}},
+      trans:{P0:{x:130,y:80},P1:{x:210,y:80},N0:{x:170,y:195},N1:{x:170,y:262},P2:{x:440,y:80,labelDy:-18},N2:{x:440,y:200,labelDy:-18}},
       nodes:[{node:"Vx",x:280,y:134},{node:"Vy",x:490,y:134}]
     }
   },
@@ -97,13 +97,13 @@ const PROBLEMS = [
         {n:"Vx",p:[[135,160],[300,160]]},{n:"Vx",p:[[300,160],[300,150],[415,150]]},
         {n:"Vx",p:[[300,160],[300,227],[360,227]]},{n:"Vy",p:[[445,205],[555,205]]}
       ],
-      trans:{P0:{x:135,y:80},N0:{x:135,y:182},P2:{x:445,y:80},P1:{x:445,y:150},N1:{x:390,y:227},N2:{x:500,y:227}},
+      trans:{P0:{x:135,y:80},N0:{x:135,y:182},P2:{x:445,y:80},P1:{x:445,y:150,labelDy:-18},N1:{x:390,y:227,labelDy:-18},N2:{x:500,y:227}},
       nodes:[{node:"Vx",x:235,y:160},{node:"Vy",x:560,y:205}]
     }
   },
 
-  /* ---- Timing diagram (self-contained inverter -> NOR, 5 staged parts) ---- */
-  { id:"p1-4", chapter:1, type:"timing", title:"Timing: inverter \u2192 NOR", diff:"hard",
+  /* ---- Timing diagram (self-contained inverter -> NAND, 5 staged parts) ---- */
+  { id:"p1-4", chapter:1, type:"timing", title:"Timing: inverter \u2192 NAND", diff:"hard",
     prompt:"Work through the five stages: first the logic truth table, then the timing diagram under the zero-, constant-, input-dependent, and transition-dependent delay models." },
 
   { id:"p2-2", chapter:2, type:"match", title:"Match the gate", diff:"easy",
@@ -111,11 +111,11 @@ const PROBLEMS = [
     gates:["AND","OR","XOR","XNOR"] },
 
   { id:"p2-7", chapter:2, type:"sop", title:"Sum of canonical products", diff:"med",
-    prompt:"Go from a truth table to a gate-level network, just doing the wiring: drag each AND gate's inputs to the correct literals so the circuit implements the given truth table as a sum of canonical products.",
+    prompt:"Go from a truth table to a gate-level network. Drag each AND gate's inputs to the correct signals so the circuit implements the given truth table as a sum of canonical products.",
     variables:["A","B","C"], minterms:[0,1,6,7] },
 
   { id:"p2-8", chapter:2, type:"sop", title:"Sum of canonical products II", diff:"med",
-    prompt:"A second truth table to go from, just doing the wiring: drag each AND gate's inputs to the correct literals so the circuit implements the given truth table as a sum of canonical products.",
+    prompt:"A second truth table to go from. Drag each AND gate's inputs to the correct signals so the circuit implements the given truth table as a sum of canonical products.",
     variables:["A","B","C"], minterms:[1,2,4,7] },
 
   { id:"p2-5", chapter:2, type:"glnet", title:"Gate-level network timing", diff:"hard",
@@ -222,11 +222,11 @@ const PROBLEMS = [
     } },
 
   { id:"p2-3", chapter:2, type:"norbuild", title:"Universal primitive gate set: NOR", diff:"hard",
-    prompt:"NOR2 alone can build every other basic gate. Drag NOR2 gates onto the canvas and wire them so your circuit matches each target gate's truth table.",
+    prompt:"NOR2 alone can build every other basic gate. Build the given target gate only using NOR2 gates.",
     primitive:"NOR", stages:["NOT","AND"] },
 
   { id:"p2-4", chapter:2, type:"norbuild", title:"Universal primitive gate set: NAND", diff:"hard",
-    prompt:"NAND2 alone can build every other basic gate. Drag NAND2 gates onto the canvas and wire them so your circuit matches each target gate's truth table.",
+    prompt:"NAND2 alone can build every other basic gate. Build the given target gate only using NAND2 gates.",
     primitive:"NAND", stages:["OR","AND"] },
 
   { id:"p3-1", chapter:3, type:"kmap", title:"Cover every 1", diff:"easy",

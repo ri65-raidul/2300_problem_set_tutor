@@ -46,13 +46,14 @@ function glList(arr){
 const GL_STAGES=[
   { num:"01", title:"Logic behaviour",
     desc:()=>"Get to know the circuit by completing its truth table.",
-    instr:()=>`Complete the truth table for every combination of ${glList(gl.net.inputs)}.` },
+    instr:()=>"" },
   { num:"02", title:"Timing analysis",
     desc:()=>"List every path through the network and find the critical and short paths.",
-    instr:()=>`For example, one path is <b>${glPathLabel(gl.paths[0])}</b>. Figure out the gate sequence for the other path${gl.paths.length>2?"s":""} yourself, then compute each path's <b>propagation delay</b> (sum every gate's t<sub>pd</sub> along the path) and <b>contamination delay</b> (sum every t<sub>cd</sub>). Finally, mark whichever path(s) have the largest propagation delay as the <b>critical path</b>, and whichever have the smallest contamination delay as the <b>short path</b>.` },
+    instr:()=>"",
+    tip:()=>`For example, one path is <b>${glPathLabel(gl.paths[0])}</b>. Figure out the gate sequence for the other path${gl.paths.length>2?"s":""} yourself, then compute each path's <b>propagation delay</b> (sum every gate's t<sub>pd</sub> along the path) and <b>contamination delay</b> (sum every t<sub>cd</sub>). Finally, mark whichever path(s) have the largest propagation delay as the <b>critical path</b>, and whichever have the smallest contamination delay as the <b>short path</b>.` },
   { num:"03", title:"Timing diagram",
     desc:()=>`Complete the timing diagram for ${glList(gl.derived)}.`,
-    instr:()=>"Using the gate delays above, complete the timing diagram. After a triggering input edge, a signal is only guaranteed to still hold its <b>old</b> value up to its contamination delay, and is only guaranteed to have reached its <b>new</b> value once its propagation delay has passed. Mark the stretch in between as <b>unknown</b>." }
+    instr:()=>"Using the gate delays below, complete the timing diagram. Make sure to show propagation delay and contamination delay explicitly." }
 ];
 
 /* ============================================================
@@ -251,7 +252,10 @@ function glRefresh(){
   document.getElementById("gl-stage-num").textContent=s.num;
   document.getElementById("gl-stage-title").textContent=s.title;
   document.getElementById("gl-stage-desc").textContent=s.desc();
-  document.getElementById("gl-instruction").innerHTML=s.instr();
+  const instrText=s.instr();
+  const instrEl=document.getElementById("gl-instruction");
+  instrEl.innerHTML=instrText;
+  instrEl.style.display=instrText?"":"none";
 
   glRenderStagebar();
   glRenderCircuit();
@@ -271,10 +275,10 @@ function glRefresh(){
     delayInfo.style.display="";
     glRenderDelayInfo(delayInfo);
     if(gl.stage===1){
-      rightLabel.textContent="Timing analysis";
+      rightLabel.innerHTML="Timing analysis"+GL_HELP(s.tip());
       glRenderPathTable(rightBody);
     } else {
-      rightLabel.textContent="Timing diagram";
+      rightLabel.innerHTML="Timing diagram"+GL_HELP(GL_DIAGRAM_HINT);
       glRenderDiagram(rightBody);
     }
   }
@@ -428,7 +432,7 @@ function glRenderPathTable(host){
    Stage 3 — timing diagram
    ============================================================ */
 function glWavePath(states,left,y0,rowH,binW){
-  const hi=y0+10, lo=y0+rowH-10, slant=Math.min(9,binW*0.35);
+  const pad=rowH/4, hi=y0+pad, lo=y0+rowH-pad, slant=Math.min(9,binW*0.35);
   let d="", started=false, prevY=null;
   for(let i=0;i<states.length;i++){
     const v=states[i];
@@ -455,19 +459,50 @@ function glUncertainSvg(x0,x1,hi,lo,expected){
   return `<rect class="${rc}" x="${x0}" y="${hi}" width="${x1-x0}" height="${lo-hi}"/>`;
 }
 
+/* Own copy of js/timing.js's edge-hover-to-erase cursor, per the no-cross-module-sharing rule. */
+const GL_ERASE_CURSOR=`url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><circle cx='10' cy='10' r='9' fill='%23d0343a' stroke='white' stroke-width='1.5'/><path d='M6 6L14 14M14 6L6 14' stroke='white' stroke-width='2' stroke-linecap='round'/></svg>") 10 10, pointer`;
+
+/* Diagram-drawing instructions, tucked behind a hover/focus "?" badge next to
+   the "Timing diagram" section label instead of sitting on the page as a
+   permanent line of text — see glRefresh()'s use of GL_HELP(). */
+const GL_DIAGRAM_HINT="Hover to preview a cell's <b>flat</b> level (top/mid/bottom third = 1/unknown/0) or, near a gridline, its <b>edge</b>. Click or drag to draw it — or, hovering that same edge on an already-drawn cell, to <b>erase</b> it. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes a stroke.";
+function GL_HELP(tip){
+  return `<span class="gl-help" tabindex="0">?<span class="gl-help-tip" role="tooltip">${tip}</span></span>`;
+}
+
 function glRenderDiagram(host){
   const signalNames=[...gl.net.inputs, ...gl.derived];
-  const W=760, left=54, right=24, top=16, rowH=52;
+  const left=54, right=24, top=16, rowH=52;
   const N=gl.duration;
-  const plotW=W-left-right, binW=plotW/N;
+  // Split every row evenly in quarters: the waveform band (middle half) and the
+  // gap above/below it (one quarter each) — so the gap between two signals'
+  // bands (one quarter of each row's neighbor, i.e. half a row) is the same
+  // size as the band itself, and every horizontal division in the diagram
+  // reads as the same-height cell rather than the band looking "taller" than
+  // the blank strip between signals.
+  const pad=rowH/4;
+  // Square cells: each bin is as wide as a row's own waveform band is tall,
+  // so the plotted width (and the overall canvas) grows or shrinks with the
+  // problem's duration instead of stretching bins to fill a fixed width.
+  const binW=rowH-2*pad;
+  const plotW=binW*N;
+  const W=left+plotW+right;
   const H=top+rowH*signalNames.length+40;
   const geom={};
-  signalNames.forEach((name,ri)=>{ const y0=top+ri*rowH; geom[name]={y0,hi:y0+10,lo:y0+rowH-10,mid:y0+rowH/2}; });
+  signalNames.forEach((name,ri)=>{ const y0=top+ri*rowH; geom[name]={y0,hi:y0+pad,lo:y0+rowH-pad,mid:y0+rowH/2}; });
 
-  let svg=`<svg class="timing-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  // Unlike js/timing.js's own diagram (always a fixed, short duration), a
+  // network's duration varies problem to problem, so tying bin width to
+  // duration to keep cells square also makes the canvas itself wider for a
+  // longer duration. Rendering it at its true pixel size (width/height
+  // attributes, not a stretch-to-fill "timing-svg" class) and letting
+  // .gl-diagram-svg-wrap's horizontal scroll take the overflow keeps every
+  // cell — and its labels — the same legible size regardless of duration,
+  // instead of squeezing a long diagram down until it's unreadable.
+  let svg=`<svg class="gl-timing-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`;
   for(let i=0;i<=N;i++){
     const x=left+i*binW;
-    svg+=`<line class="timing-grid" x1="${x}" y1="${top}" x2="${x}" y2="${top+rowH*signalNames.length}"/>`;
+    svg+=`<line class="${i===0?"timing-axis":"timing-grid"}" x1="${x}" y1="${top}" x2="${x}" y2="${top+rowH*signalNames.length}"/>`;
   }
   signalNames.forEach(name=>{
     const g=geom[name];
@@ -497,8 +532,7 @@ function glRenderDiagram(host){
   svg+=`<text class="timing-small" x="${W-right}" y="${top+rowH*signalNames.length+20}" text-anchor="end">time</text>`;
   svg+=`</svg>`;
 
-  host.innerHTML=`<div class="gl-diagram-hint">Hover to preview a cell's <b>flat</b> level (top/mid/bottom third = 1/unknown/0) or, near a gridline, its <b>edge</b> — then click or drag to draw it. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes a stroke.</div>`+
-    `<div class="gl-diagram-svg-wrap">${svg}</div>`;
+  host.innerHTML=`<div class="gl-diagram-svg-wrap">${svg}</div>`;
 
   const svgEl=host.querySelector("svg");
   if(!svgEl) return;
@@ -528,7 +562,9 @@ function glRenderDiagram(host){
     /* A cell's "horizontal side" (its wide middle) previews/sets the flat level
        for that whole bin; its "vertical side" (a strip snapped to the gridline
        at either end) previews/sets the same bin but highlights the exact edge
-       you're placing — both resolve to the same bin index either way. */
+       you're placing — both resolve to the same bin index either way. Hovering
+       that same edge strip when the bin is already filled instead offers to
+       erase it (matching js/timing.js's own edge-hover-to-erase interaction). */
     const snapPx=Math.min(8,binW*0.28);
     const loc=e=>{
       const pt=clientToSvg(e);
@@ -540,7 +576,8 @@ function glRenderDiagram(host){
       let edgeX=null;
       if(distLeft<=snapPx) edgeX=left+bin*binW;
       else if(distRight<=snapPx) edgeX=left+(bin+1)*binW;
-      return {bin,val,edgeX};
+      const erase=edgeX!==null && gl.diagram[sig][bin]!=null;
+      return {bin,val,edgeX,erase};
     };
     const paint=(a,b,val)=>{
       const lo=Math.min(a,b), hi=Math.max(a,b);
@@ -553,24 +590,36 @@ function glRenderDiagram(host){
     const showHover=l=>{
       if(!hoverHost) return;
       let html;
-      if(l.val==="X"){
-        html=`<rect class="gl-hover-unknown" x="${left+l.bin*binW}" y="${g.hi}" width="${binW}" height="${g.lo-g.hi}"/>`;
+      if(l.erase){
+        // Highlight the bin's own drawn segment (same y/shape as its current
+        // level) in the "about to be removed" style, right on top of it.
+        const cur=gl.diagram[sig][l.bin];
+        html = cur==="X"
+          ? `<rect class="gl-hover-erase-unknown" x="${left+l.bin*binW}" y="${g.hi}" width="${binW}" height="${g.lo-g.hi}"/>`
+          : `<path class="gl-hover-erase" d="M ${left+l.bin*binW} ${cur?g.hi:g.lo} L ${left+(l.bin+1)*binW} ${cur?g.hi:g.lo}"/>`;
+        hit.style.cursor=GL_ERASE_CURSOR;
       } else {
-        const y=l.val?g.hi:g.lo;
-        html=`<path class="gl-hover-preview" d="M ${left+l.bin*binW} ${y} L ${left+(l.bin+1)*binW} ${y}"/>`;
+        if(l.val==="X"){
+          html=`<rect class="gl-hover-unknown" x="${left+l.bin*binW}" y="${g.hi}" width="${binW}" height="${g.lo-g.hi}"/>`;
+        } else {
+          const y=l.val?g.hi:g.lo;
+          html=`<path class="gl-hover-preview" d="M ${left+l.bin*binW} ${y} L ${left+(l.bin+1)*binW} ${y}"/>`;
+        }
+        if(l.edgeX!==null) html+=`<line class="gl-hover-edge" x1="${l.edgeX}" y1="${g.hi-4}" x2="${l.edgeX}" y2="${g.lo+4}"/>`;
+        hit.style.cursor="";
       }
-      if(l.edgeX!==null) html+=`<line class="gl-hover-edge" x1="${l.edgeX}" y1="${g.hi-4}" x2="${l.edgeX}" y2="${g.lo+4}"/>`;
       hoverHost.innerHTML=html;
     };
-    const hideHover=()=>{ if(hoverHost) hoverHost.innerHTML=""; };
+    const hideHover=()=>{ if(hoverHost) hoverHost.innerHTML=""; hit.style.cursor=""; };
 
     hit.addEventListener("pointerdown",e=>{
       if(e.button!==0) return;
       e.preventDefault();
       const l=loc(e);
+      const val = l.erase ? null : l.val;
       glPushHistory();
-      gl.dragging=true; gl.dragSig=sig; gl.drawValue=l.val; gl.lastBin=l.bin;
-      paint(l.bin,l.bin,l.val);
+      gl.dragging=true; gl.dragSig=sig; gl.drawValue=val; gl.lastBin=l.bin;
+      paint(l.bin,l.bin,val);
       hideHover();
       try{ hit.setPointerCapture(e.pointerId); }catch(err){}
     });
@@ -649,7 +698,7 @@ function glCheck(){
     if(chainMissing) msgs.push({s:"info",t:`Figure out the gate sequence for ${chainMissing} more path${chainMissing===1?"":"s"} first.`});
     else if(missing) msgs.push({s:"info",t:`Fill in the propagation and contamination delay for ${missing} more path${missing===1?"":"s"}.`});
     else if(chainWrong) msgs.push({s:"warn",t:`${chainWrong} path${chainWrong===1?"":"s"} ${chainWrong===1?"doesn't":"don't"} list the right gate sequence yet — trace each input through the diagram to ${gl.net.output}.`});
-    else if(wrong) msgs.push({s:"warn",t:`${wrong} value${wrong===1?" doesn't":"s don't"} match yet — see the highlighted cells. Propagation delay sums every t<sub>pd</sub> along the path; contamination delay sums every t<sub>cd</sub>; the critical path has the largest propagation delay, the short path the smallest contamination delay.`});
+    else if(wrong) msgs.push({s:"warn",t:`${wrong} value${wrong===1?" doesn't":"s don't"} match yet. See the highlighted cells. Propagation delay sums every t<sub>pd</sub> along the path; contamination delay sums every t<sub>cd</sub>; the critical path has the largest propagation delay, the short path the smallest contamination delay.`});
     correct=!wrong && !missing && !chainMissing && !chainWrong;
 
   } else {

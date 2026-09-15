@@ -113,10 +113,13 @@ function cmosGeom(){
   return {W,cx,vddY,workTop,workBottom,vyY,gndY};
 }
 
-/* Rails the student may connect to for the current build. */
+/* Rails the student may connect to for the current build. GND joins the
+   list when building a pulldown: the student's own network can branch into
+   parallel legs that each need their own clean drop to ground, the same way
+   they already fan out to VDD/Vy elsewhere. */
 function railsForBuild(){
   const g=cmosGeom();
-  if(cmos.p && cmos.p.build==="pulldown") return [{id:"VY",y:g.vyY}];
+  if(cmos.p && cmos.p.build==="pulldown") return [{id:"VY",y:g.vyY},{id:"GND",y:g.gndY}];
   return [{id:"VDD",y:g.vddY},{id:"VY",y:g.vyY}];
 }
 
@@ -187,6 +190,23 @@ function fmtV(v){
   return v===3.3 ? "3.3V" : v===0 ? "0V" : v;
 }
 
+/* Render a column key like "Va"/"P0"/"N2" with a real <sub> suffix, matching
+   the course's hand-drawn V_a / P_0 style table headers. A real <sub>
+   element (rather than lookalike Unicode "subscript" letters, which don't
+   exist for every letter and render inconsistently — some are actually
+   superscript modifier letters, some substitute a different glyph entirely)
+   keeps every column heading visually consistent. */
+function cmosSubscriptLabel(key){
+  return key.length>1 ? key[0]+"<sub>"+key.slice(1)+"</sub>" : key;
+}
+
+/* Same idea for SVG <text> content (the schematic glyphs below), where a
+   real <sub> element isn't valid — SVG needs a <tspan baseline-shift="sub">
+   instead, matching js/timing.js's fixed circuit diagram. */
+function cmosSvgSubscriptLabel(key){
+  return key.length>1 ? key[0]+`<tspan baseline-shift="sub" font-size="70%">${key.slice(1)}</tspan>` : key;
+}
+
 /* -- transistor glyph (schematic) -- */
 function glyph(cx, cy, t, name){
   const pmos=t.kind==="pmos";
@@ -206,14 +226,14 @@ function glyph(cx, cy, t, name){
 
   // Gate connection; PMOS gets the inversion bubble.
   if(pmos){
-    s+=`<line x1="${leadX}" y1="${cy}" x2="${gatePlateX-7}" y2="${cy}"/>`;
-    s+=`<circle cx="${gatePlateX-3.5}" cy="${cy}" r="3.5"/>`;
+    s+=`<line x1="${leadX}" y1="${cy}" x2="${gatePlateX-8}" y2="${cy}"/>`;
+    s+=`<circle cx="${gatePlateX-4}" cy="${cy}" r="4"/>`;
   }else{
     s+=`<line x1="${leadX}" y1="${cy}" x2="${gatePlateX}" y2="${cy}"/>`;
   }
 
-  if(name!=="") s+=`<text class="tname" x="${cx+8}" y="${cy-12}">${name}</text>`;
-  if(t.gate!=="") s+=`<text x="${leadX-4}" y="${cy+3}" text-anchor="end">${t.gate}</text>`;
+  if(name!=="") s+=`<text class="tname" x="${cx+8}" y="${cy-12}">${cmosSvgSubscriptLabel(name)}</text>`;
+  if(t.gate!=="") s+=`<text class="tgate" x="${leadX-4}" y="${cy+4}" text-anchor="end">${cmosSvgSubscriptLabel(t.gate)}</text>`;
   s+=`</g>`;
   return s;
 }
@@ -236,7 +256,7 @@ function cmosInjectStyles(){
   st.textContent=`
     .palette-part{transition:transform .08s ease, border-color .12s ease, box-shadow .12s ease, background .12s ease;}
     .palette-part.pressed{transform:scale(.95);}
-    .palette-part.on{border-color:var(--ink);}
+    .palette-part.on{border-color:var(--ink); background:var(--surface);}
     .palette-part.armed{border-color:var(--focus);background:rgba(47,107,255,.10);box-shadow:0 0 0 2px var(--focus) inset;}
     .palette-glyph{display:block;margin:0 auto 2px;}
     .palette-label{display:block;text-align:center;}
@@ -260,6 +280,7 @@ function buildCmos(p){
   cmos.armedHover=null;
   cmos.buildPassed=false;
   cmos.simUnlocked=false;
+  cmos.simSolved=false;
   cmos.questionWasVisible=!!(question && getComputedStyle(question).display!=="none");
   cmos.table=cmosInputRows(p).map(()=>({marks:new Set(),vy:null}));
   cmos.verdict=null;
@@ -312,22 +333,16 @@ function renderCmosToolbar(){
 
     <div class="tool-group">
       <span class="tg-label">Gate</span>
+      <div class="schem-tip">Select your signal before dragging a transistor.</div>
       ${seg(p.inputs.map(g=>({key:"gate",val:g,label:g})),activeGate)}
     </div>
 
-    <div class="tool-group">
-      <span class="tg-label">&nbsp;</span>
-      <div class="schem-actions">
-        <button class="btn ghost sm" id="schem-delete" type="button" ${cmos.selected?"":"disabled"}>Delete</button>
-        <button class="btn ghost sm" id="schem-clear" type="button" ${cmos.devices.length||cmos.wires.length||cmos.junctions.length?"":"disabled"}>Clear</button>
-      </div>
+    <div class="schem-actions">
+      <button class="btn ghost sm" id="schem-delete" type="button" ${cmos.selected?"":"disabled"}>Delete</button>
+      <button class="btn ghost sm" id="schem-clear" type="button" ${cmos.devices.length||cmos.wires.length||cmos.junctions.length?"":"disabled"}>Clear</button>
     </div>
 
     <div class="schem-status">${status}</div>
-
-    <div class="schem-tip">
-      Drag <b>PMOS</b> / <b>NMOS</b> onto the sheet — or click one, then click a spot to drop it. Drag from a terminal, or from the <b>VDD</b> / <b>V\u1d67</b> rail, and release on another terminal or anywhere along a rail to connect.
-    </div>
   `;
 
   // Palette: press feedback + start a place gesture. It becomes drag-to-place
@@ -471,6 +486,14 @@ function createRailJunction(railId,point){
   const y = railId==="VDD"?g.vddY : railId==="VY"?g.vyY : g.gndY;
   const x = snapGrid(Math.max(45,Math.min(g.W-45, point?point.x:g.cx)));
 
+  // The rail's own fixed marker is always drawn at g.cx — which isn't
+  // itself grid-aligned (215 rounds to 210/220), so a tap that lands near
+  // the middle of the rail would otherwise mint its own junction a few
+  // units off from that marker: two dots side by side instead of one.
+  // Snapping onto the rail id itself here means that tap connects to the
+  // exact same point already being drawn, rather than a lookalike neighbor.
+  if(Math.abs(x-g.cx)<=8) return railId;
+
   const existing=cmos.junctions.find(j=>j.rail===railId && Math.abs(j.x-x)<=6);
   if(existing) return existing.id;
 
@@ -584,7 +607,7 @@ function nearestPointOnWire(w,p){
   return best;
 }
 
-function nearestWire(point,excludeWireId=null,radius=20){
+function nearestWire(point,excludeWireId=null,radius=22){
   let best=null;
 
   cmos.wires.forEach(w=>{
@@ -598,7 +621,7 @@ function nearestWire(point,excludeWireId=null,radius=20){
 }
 
 /* Nearest point along a connectable rail (VDD / Vy). */
-function nearestRail(point,radius=22){
+function nearestRail(point,radius=28){
   const g=cmosGeom();
   let best=null;
   railsForBuild().forEach(r=>{
@@ -612,9 +635,10 @@ function nearestRail(point,radius=22){
 }
 
 function allSchematicEndpoints(){
-  // VDD / Vy are handled as rails (connect anywhere along the line), so they
-  // are NOT point endpoints here. GND (pull-down) stays a single point.
-  const ids = cmos.p.build==="pulldown" ? ["GND"] : [];
+  // VDD / Vy / GND (when building a pulldown) are all handled as rails
+  // (connect anywhere along the line), so none of them are point endpoints
+  // here — see railsForBuild().
+  const ids = [];
   cmos.devices.forEach(d=>ids.push(`${d.id}:top`,`${d.id}:bottom`));
   cmos.junctions.forEach(j=>ids.push(j.id));
   return ids
@@ -622,7 +646,7 @@ function allSchematicEndpoints(){
     .filter(x=>x.pos);
 }
 
-function nearestEndpoint(point,excludeId=null,radius=28){
+function nearestEndpoint(point,excludeId=null,radius=36){
   let best=null;
   let bestD=radius;
 
@@ -641,12 +665,13 @@ function nearestEndpoint(point,excludeId=null,radius=28){
   return best;
 }
 
+/* GND is always a single fixed point (never a connectable rail), so this is
+   purely decorative — matches the outlined-triangle ground symbol used by
+   js/timing.js's fixed circuit diagram. The wire feeding in must end at
+   y-14, same contract as the old 3-bar symbol. */
 function groundSvg(x,y){
-  return `
-    <line class="rail" x1="${x-16}" y1="${y-14}" x2="${x+16}" y2="${y-14}"/>
-    <line class="rail" x1="${x-10}" y1="${y-8}" x2="${x+10}" y2="${y-8}"/>
-    <line class="rail" x1="${x-4}" y1="${y-2}" x2="${x+4}" y2="${y-2}"/>
-  `;
+  const top=y-14;
+  return `<path class="ground-tri" d="M ${x-11} ${top} L ${x+11} ${top} L ${x} ${top+20} Z"/>`;
 }
 
 function renderGivenPullDown(p,centerX,vyY){
@@ -658,23 +683,21 @@ function renderGivenPullDown(p,centerX,vyY){
   if(net.structure==="parallelBranches"){
     const branches=net.branches;
     const maxLen=Math.max(...branches.map(b=>b.length));
-    const spacing=76;
+    const spacing=130;
     const width=(branches.length-1)*spacing;
     const xs=branches.map((_,i)=>centerX-width/2+i*spacing);
-    const topBusY=vyY+22;
     const firstY=vyY+52;
-    const bottomBusY=firstY+(maxLen-1)*cellH+38;
-    const gndY=bottomBusY+34;
+    const gndY=firstY+(maxLen-1)*cellH+72;
 
-    svg+=`<line class="wire" x1="${centerX}" y1="${vyY}" x2="${centerX}" y2="${topBusY}"/>`;
-    svg+=`<line class="wire" x1="${xs[0]}" y1="${topBusY}" x2="${xs[xs.length-1]}" y2="${topBusY}"/>`;
-
+    // Parallel branches don't share a node: each one taps the Vy rail and
+    // gets its own ground directly, instead of funneling through one shared
+    // bus and a single merged ground symbol.
     branches.forEach((branch,bi)=>{
       const x=xs[bi];
       const offset=((maxLen-branch.length)*cellH)/2;
       const ys=branch.map((_,i)=>firstY+offset+i*cellH);
 
-      svg+=`<line class="wire" x1="${x}" y1="${topBusY}" x2="${x}" y2="${ys[0]-20}"/>`;
+      svg+=`<line class="wire" x1="${x}" y1="${vyY}" x2="${x}" y2="${ys[0]-20}"/>`;
 
       branch.forEach((t,i)=>{
         svg+=glyph(x,ys[i],t,t.name);
@@ -683,12 +706,10 @@ function renderGivenPullDown(p,centerX,vyY){
         }
       });
 
-      svg+=`<line class="wire" x1="${x}" y1="${ys[ys.length-1]+20}" x2="${x}" y2="${bottomBusY}"/>`;
+      svg+=`<line class="wire" x1="${x}" y1="${ys[ys.length-1]+20}" x2="${x}" y2="${gndY-14}"/>`;
+      svg+=groundSvg(x,gndY);
     });
 
-    svg+=`<line class="wire" x1="${xs[0]}" y1="${bottomBusY}" x2="${xs[xs.length-1]}" y2="${bottomBusY}"/>`;
-    svg+=`<line class="wire" x1="${centerX}" y1="${bottomBusY}" x2="${centerX}" y2="${gndY-14}"/>`;
-    svg+=groundSvg(centerX,gndY);
     return {svg,h:gndY-vyY+10};
   }
 
@@ -719,24 +740,22 @@ function renderGivenPullUp(p,centerX,vyY){
   if(net.structure==="parallelBranches"){
     const branches=net.branches;
     const maxLen=Math.max(...branches.map(b=>b.length));
-    const spacing=82;
+    const spacing=130;
     const width=(branches.length-1)*spacing;
     const xs=branches.map((_,i)=>centerX-width/2+i*spacing);
-    const topBusY=54;
     const firstY=82;
-    const bottomBusY=vyY-24;
 
     svg+=`<line class="rail" x1="45" y1="${vddY}" x2="${430-45}" y2="${vddY}"/>`;
     svg+=`<text class="pwr-tag" x="${430-45}" y="${vddY-8}" text-anchor="end">VDD = 3.3V</text>`;
-    svg+=`<line class="wire" x1="${centerX}" y1="${vddY}" x2="${centerX}" y2="${topBusY}"/>`;
-    svg+=`<line class="wire" x1="${xs[0]}" y1="${topBusY}" x2="${xs[xs.length-1]}" y2="${topBusY}"/>`;
 
+    // Parallel branches don't share a node: each one taps the VDD rail and
+    // the Vy rail directly, instead of funneling through a shared bus.
     branches.forEach((branch,bi)=>{
       const x=xs[bi];
       const offset=((maxLen-branch.length)*cellH)/2;
       const ys=branch.map((_,i)=>firstY+offset+i*cellH);
 
-      svg+=`<line class="wire" x1="${x}" y1="${topBusY}" x2="${x}" y2="${ys[0]-20}"/>`;
+      svg+=`<line class="wire" x1="${x}" y1="${vddY}" x2="${x}" y2="${ys[0]-20}"/>`;
 
       branch.forEach((t,i)=>{
         svg+=glyph(x,ys[i],t,t.name);
@@ -745,11 +764,9 @@ function renderGivenPullUp(p,centerX,vyY){
         }
       });
 
-      svg+=`<line class="wire" x1="${x}" y1="${ys[ys.length-1]+20}" x2="${x}" y2="${bottomBusY}"/>`;
+      svg+=`<line class="wire" x1="${x}" y1="${ys[ys.length-1]+20}" x2="${x}" y2="${vyY}"/>`;
     });
 
-    svg+=`<line class="wire" x1="${xs[0]}" y1="${bottomBusY}" x2="${xs[xs.length-1]}" y2="${bottomBusY}"/>`;
-    svg+=`<line class="wire" x1="${centerX}" y1="${bottomBusY}" x2="${centerX}" y2="${vyY}"/>`;
     return {svg,h:vyY};
   }
 
@@ -840,20 +857,34 @@ function cmosGestureMove(e){
     renderCmosCanvas();
 
   } else if(cmos.wiring){
-    const snap=nearestEndpoint(pnt,cmos.wiring.from,28);
-    const railSnap=snap ? null : nearestRail(pnt,22);
-    const wireSnap=(snap||railSnap) ? null : nearestWire(pnt,null,18);
-
-    cmos.wiring.snap = snap ? {type:"endpoint",id:snap.id}
-      : railSnap ? {type:"rail",id:railSnap.id,point:railSnap.point}
-      : wireSnap ? {type:"wire",id:wireSnap.wire.id,point:{x:wireSnap.x,y:wireSnap.y}}
-      : null;
-    cmos.wiring.cursor = snap ? snap.pos
-      : railSnap ? railSnap.point
-      : wireSnap ? {x:wireSnap.x,y:wireSnap.y}
-      : pnt;
+    const {snap,cursor}=cmosWiringSnapAt(pnt,cmos.wiring.from);
+    cmos.wiring.snap=snap;
+    cmos.wiring.cursor=cursor;
     renderCmosCanvas();
   }
+}
+
+/* Shared by the live hover preview and the release itself, so what you see
+   highlighted is exactly what you get — the drop is graded fresh from the
+   pointerup's own coordinates (see cmosGestureUp) rather than trusting
+   whatever the last pointermove happened to compute, which can lag behind
+   a fast release. Generous radii mean a wire only needs to land NEAR a dot,
+   not exactly on it. */
+function cmosWiringSnapAt(pnt,fromId){
+  const snap=nearestEndpoint(pnt,fromId,36);
+  const railSnap=snap ? null : nearestRail(pnt,28);
+  const wireSnap=(snap||railSnap) ? null : nearestWire(pnt,null,22);
+
+  return {
+    snap: snap ? {type:"endpoint",id:snap.id}
+      : railSnap ? {type:"rail",id:railSnap.id,point:railSnap.point}
+      : wireSnap ? {type:"wire",id:wireSnap.wire.id,point:{x:wireSnap.x,y:wireSnap.y}}
+      : null,
+    cursor: snap ? snap.pos
+      : railSnap ? railSnap.point
+      : wireSnap ? {x:wireSnap.x,y:wireSnap.y}
+      : pnt
+  };
 }
 
 function cmosGestureUp(e){
@@ -902,7 +933,13 @@ function cmosGestureUp(e){
     renderCmosCanvas();
 
   } else if(wiring){
-    const snap=wiring.snap;
+    // Re-derive the snap from the release event's own coordinates rather
+    // than trusting wiring.snap, which was last set by whichever pointermove
+    // happened to fire before this pointerup — on a fast release those can
+    // land a few pixels apart, which is exactly what made a drop feel like
+    // it had to land exactly on the dot.
+    const releasePnt=cmosClientToSvg(e.clientX,e.clientY);
+    const snap = releasePnt ? cmosWiringSnapAt(releasePnt,wiring.from).snap : wiring.snap;
     let target=null;
     if(snap && snap.type==="endpoint" && snap.id!==wiring.from) target={kind:"endpoint",id:snap.id};
     else if(snap && snap.type==="rail") target={kind:"rail",id:snap.id,point:snap.point};
@@ -935,7 +972,7 @@ function renderCmosCanvas(){
 
   if(isPullDown){
     givenDraw=renderGivenPullUp(p,g.cx,g.vyY);
-    H=g.gndY+22;
+    H=g.gndY+56;
   } else {
     givenDraw=renderGivenPullDown(p,g.cx,g.vyY);
     H=g.vyY+givenDraw.h+8;
@@ -961,12 +998,16 @@ function renderCmosCanvas(){
     // Editable Vy rail (connect anywhere along it).
     svg+=`<line class="rail" x1="45" y1="${g.vyY}" x2="${g.W-45}" y2="${g.vyY}"/>`;
     svg+=`<circle class="terminal fixed" data-endpoint="VY" cx="${g.cx}" cy="${g.vyY}" r="4"/>`;
-    svg+=`<text class="vy-tag" x="${g.W-38}" y="${g.vyY+4}">V\u1d67</text>`;
+    svg+=`<text class="vy-tag" x="${g.W-38}" y="${g.vyY+4}">${cmosSvgSubscriptLabel("Vy")}</text>`;
 
-    // Fixed GND connection point at the bottom (single point).
-    svg+=`<circle class="terminal fixed${tgt("GND")}" data-endpoint="GND" cx="${g.cx}" cy="${g.gndY}" r="4"/>`;
-    svg+=`<circle class="terminal-hot" data-endpoint="GND" cx="${g.cx}" cy="${g.gndY}" r="16"/>`;
-    svg+=groundSvg(g.cx,g.gndY+14);
+    // Editable GND rail (connect anywhere along it) — a parallel pulldown
+    // needs to drop each of its branches to ground independently, the same
+    // way they already fan out to Vy above.
+    svg+=`<line class="rail" x1="45" y1="${g.gndY}" x2="${g.W-45}" y2="${g.gndY}"/>`;
+    svg+=`<circle class="terminal fixed" data-endpoint="GND" cx="${g.cx}" cy="${g.gndY}" r="4"/>`;
+    svg+=`<circle class="terminal-hot" data-endpoint="GND" cx="${g.cx}" cy="${g.gndY}" r="20"/>`;
+    svg+=`<line class="wire" x1="${g.cx}" y1="${g.gndY}" x2="${g.cx}" y2="${g.gndY+20}"/>`;
+    svg+=groundSvg(g.cx,g.gndY+34);
   } else {
     // Fixed VDD and Vy rails for the editable pull-up (connect anywhere).
     svg+=`<line class="rail" x1="45" y1="${g.vddY}" x2="${g.W-45}" y2="${g.vddY}"/>`;
@@ -975,7 +1016,7 @@ function renderCmosCanvas(){
 
     svg+=`<line class="rail" x1="45" y1="${g.vyY}" x2="${g.W-45}" y2="${g.vyY}"/>`;
     svg+=`<circle class="terminal fixed" data-endpoint="VY" cx="${g.cx}" cy="${g.vyY}" r="4"/>`;
-    svg+=`<text class="vy-tag" x="${g.W-38}" y="${g.vyY+4}">V\u1d67</text>`;
+    svg+=`<text class="vy-tag" x="${g.W-38}" y="${g.vyY+4}">${cmosSvgSubscriptLabel("Vy")}</text>`;
   }
 
   // Invisible hit-lines that let a wire start anywhere on a rail.
@@ -1006,9 +1047,9 @@ function renderCmosCanvas(){
     svg+=`</g>`;
 
     svg+=`<circle class="terminal${tgt(d.id+":top")}" data-endpoint="${d.id}:top" cx="${d.x}" cy="${d.y-22}" r="3.4"/>`;
-    svg+=`<circle class="terminal-hot" data-endpoint="${d.id}:top" cx="${d.x}" cy="${d.y-22}" r="16"/>`;
+    svg+=`<circle class="terminal-hot" data-endpoint="${d.id}:top" cx="${d.x}" cy="${d.y-22}" r="20"/>`;
     svg+=`<circle class="terminal${tgt(d.id+":bottom")}" data-endpoint="${d.id}:bottom" cx="${d.x}" cy="${d.y+22}" r="3.4"/>`;
-    svg+=`<circle class="terminal-hot" data-endpoint="${d.id}:bottom" cx="${d.x}" cy="${d.y+22}" r="16"/>`;
+    svg+=`<circle class="terminal-hot" data-endpoint="${d.id}:bottom" cx="${d.x}" cy="${d.y+22}" r="20"/>`;
   });
 
   const endpointUse={};
@@ -1025,7 +1066,7 @@ function renderCmosCanvas(){
   cmos.junctions.forEach(j=>{
     const selected=(cmos.selected?.type==="junction" && cmos.selected.id===j.id) || snapId===j.id;
     svg+=`<circle class="terminal${selected?" snap-target":""}" data-endpoint="${j.id}" cx="${j.x}" cy="${j.y}" r="3.8"/>`;
-    svg+=`<circle class="terminal-hot junction-hot" data-endpoint="${j.id}" data-junction="${j.id}" cx="${j.x}" cy="${j.y}" r="16"/>`;
+    svg+=`<circle class="terminal-hot junction-hot" data-endpoint="${j.id}" data-junction="${j.id}" cx="${j.x}" cy="${j.y}" r="20"/>`;
   });
 
   if(!cmos.devices.length && !(cmos.drag && cmos.drag.mode==="place") && !cmos.armed){
@@ -1194,13 +1235,13 @@ function renderCmosCanvas(){
 function renderCmosTable(){
   const p=cmos.p, rows=cmosInputRows(p), P=placedPullup(), given=givenTransistors(p.given);
   const cols=[
-    ...p.inputs.map(g=>({key:g, kind:"in", label:g})),
-    ...P.map(o=>({key:o.name, kind:o.t.kind==="pmos"?"p":"n", label:o.name, source:"built"})),
-    ...given.map(t=>({key:t.name, kind:t.kind==="pmos"?"p":"n", label:t.name, source:"given"})),
-    {key:"vy", kind:"vy", label:"V\u1d67"}
+    ...p.inputs.map(g=>({key:g, kind:"in", label:cmosSubscriptLabel(g)})),
+    ...P.map(o=>({key:o.name, kind:o.t.kind==="pmos"?"p":"n", label:cmosSubscriptLabel(o.name), source:"built"})),
+    ...given.map(t=>({key:t.name, kind:t.kind==="pmos"?"p":"n", label:cmosSubscriptLabel(t.name), source:"given"})),
+    {key:"vy", kind:"vy", label:cmosSubscriptLabel("Vy")}
   ];
   let html=`<table class="simtable"><thead><tr>`;
-  cols.forEach(c=>{ const cls=c.kind==="in"?"grp-in":c.kind==="p"?"grp-p":c.kind==="n"?"grp-n":""; html+=`<th class="${cls}">${c.label}</th>`; });
+  cols.forEach(c=>{ const cls=c.kind==="in"?"grp-in":c.kind==="vy"?"grp-node":c.kind==="p"?"grp-p":"grp-n"; html+=`<th class="${cls}">${c.label}</th>`; });
   html+=`</tr></thead><tbody>`;
   rows.forEach((assign,ri)=>{
     html+=`<tr>`;
@@ -1439,8 +1480,32 @@ function cmosHideTableFeedback(){
   if(c) c.style.display="none";
   const sim=document.getElementById("cmos-sim-card");
   if(sim) sim.classList.remove("is-correct");
-  const actions=document.getElementById("cmos-complete-actions");
-  if(actions) actions.style.display="none";
+  cmos.simSolved=false;
+  cmosRenderSimActions();
+}
+
+/* Single dynamic action row per stage (mirrors js/nor.js's norRenderActions):
+   swap Check/Reset for Continue once the build is verified, and swap Check
+   table for Explore-more once the table is solved, rather than layering a
+   second "you're done" row on top of the first. */
+function cmosRenderBuildActions(){
+  const host=document.getElementById("cmos-build-actions");
+  if(!host) return;
+  host.innerHTML = cmos.buildPassed
+    ? `<button class="btn" type="button" onclick="cmosContinueToSim()">Continue to simulation &rarr;</button>`
+    : `<button class="btn" type="button" onclick="cmosCheckBuild()">Check circuit</button>
+       <button class="btn ghost" type="button" onclick="cmosReset()">Reset</button>`;
+}
+
+/* "Back to circuit" always stays available here so the student can return to
+   the previous stage at any point, solved or not. */
+function cmosRenderSimActions(){
+  const host=document.getElementById("cmos-sim-actions");
+  if(!host) return;
+  const back=`<button class="btn ghost" type="button" onclick="cmosBackToBuild()">Back to circuit</button>`;
+  host.innerHTML = cmos.simSolved
+    ? `<button class="btn" type="button" onclick="cmosExploreMoreProblems()">Explore more problems &rarr;</button>${back}`
+    : `<button class="btn" type="button" onclick="cmosCheckTable()">Check table</button>${back}`;
 }
 function cmosHideFeedback(){
   // A structural change to the circuit invalidates the build verdict, hides the
@@ -1462,19 +1527,16 @@ function cmosHideFeedback(){
    - passed, not moved  → Simulate hidden, Continue button shown
    - moved on           → Simulate revealed (table interactive) */
 function cmosUpdateSimGate(){
-  const passed=!!cmos.buildPassed;
   const revealed=!!cmos.simUnlocked;
   const build=document.getElementById("cmos-build-card");
   const sim=document.getElementById("cmos-sim-card");
-  const cont=document.getElementById("cmos-continue");
-  const btn=document.getElementById("cmos-check-table-btn");
   const question=document.getElementById("solve-question");
   if(build) build.style.display = revealed ? "none" : "";
   if(sim) sim.style.display = revealed ? "" : "none";
-  if(cont) cont.style.display = (passed && !revealed) ? "" : "none";
-  if(btn) btn.disabled = !revealed;
   if(question) question.style.display = (!revealed && cmos.questionWasVisible) ? "" : "none";
+  cmosRenderBuildActions();
   if(!revealed) cmosHideTableFeedback();
+  cmosRenderSimActions();
 }
 
 /* Copy the verified schematic into the simulation stage as a clean,
@@ -1557,7 +1619,7 @@ function cmosCheckBuild(){
   if(!designOK && missing.length) msgs.push({s:"warn",t:`Input${missing.length>1?"s":""} ${missing.join(", ")} ${missing.length>1?"are":"is"} not controlling any transistor yet.`});
 
   if(designOK){
-    msgs.push({s:"success",t:`Your ${expectedLabel} network correctly complements the given ${buildingPullDown?"pull-up":"pull-down"} network. Press <b>Continue to simulation</b> below to move on.`});
+    msgs.push({s:"success",t:`Your ${expectedLabel} network correctly complements the given ${buildingPullDown?"pull-up":"pull-down"} network.`});
   } else if(!short && !flt && !wrongType.length && !disconnected.length && !complement){
     msgs.push({s:"warn",t:`The ${expectedLabel} conducts for the wrong inputs. Recheck which transistors should be in series and which should share the same two nodes in parallel.`});
   }
@@ -1619,9 +1681,9 @@ function cmosCheckTable(){
   const msgs=[];
   const solved=wrong===0;
   const simCard=document.getElementById("cmos-sim-card");
-  const completeActions=document.getElementById("cmos-complete-actions");
   if(simCard) simCard.classList.toggle("is-correct", solved);
-  if(completeActions) completeActions.style.display=solved ? "flex" : "none";
+  cmos.simSolved=solved;
+  cmosRenderSimActions();
   if(solved){
     msgs.push({
       s:"success",

@@ -59,8 +59,23 @@ function netColor(reveal, netName){
   return (c.toVDD&&c.toGND)?"var(--warn)":c.toVDD?"var(--g0)":c.toGND?"var(--g2)":null;
 }
 
+/* Same idea as js/cmos.js's cmosSvgSubscriptLabel — a real SVG
+   <tspan baseline-shift="sub"> instead of a lookalike Unicode "subscript"
+   character (several of those aren't true subscripts and render
+   inconsistently). Kept as its own copy per this file's no-shared-code
+   convention rather than calling into cmos.js. */
+function swSubscriptLabel(key){
+  return key.length>1 ? key[0]+`<tspan baseline-shift="sub" font-size="70%">${key.slice(1)}</tspan>` : key;
+}
+/* Same subscripted-suffix convention, but for HTML (the input chips in the
+   toolbar) rather than SVG — a real <sub> element instead of the SVG tspan
+   swSubscriptLabel produces. */
+function swSubscriptHtml(key){
+  return key.length>1 ? key[0]+`<sub>${key.slice(1)}</sub>` : key;
+}
+
 /* -- glyphs -- */
-function swGlyph(x,y,name,gate,kind,closed,liveCol,gateCol){
+function swGlyph(x,y,name,gate,kind,closed,liveCol,gateCol,gateLabelDy){
   const isPmos=kind==="pmos";
   const channelX=x-4;
 
@@ -79,21 +94,28 @@ function swGlyph(x,y,name,gate,kind,closed,liveCol,gateCol){
   }
 
   if(isPmos){
-    s+=`<line class="sgate" x1="${x-32}" y1="${y}" x2="${channelX-12}" y2="${y}"/>`;
-    s+=`<circle class="sgatebubble" cx="${channelX-8}" cy="${y}" r="3.2"/>`;
+    s+=`<line class="sgate" x1="${x-32}" y1="${y}" x2="${channelX-13}" y2="${y}"/>`;
+    s+=`<circle class="sgatebubble" cx="${channelX-9}" cy="${y}" r="4"/>`;
   }else{
     s+=`<line class="sgate" x1="${x-32}" y1="${y}" x2="${channelX-4}" y2="${y}"/>`;
   }
 
-  s+=`<text class="sname" x="${x+7}" y="${y-10}">${name}</text>`;
-  s+=`<text x="${x-34}" y="${y+3}" text-anchor="end"${gateCol?` style="fill:${gateCol};font-weight:600"`:""}>${gate}</text>`;
+  s+=`<text class="sname" x="${x+7}" y="${y-10}">${swSubscriptLabel(name)}</text>`;
+  s+=`<text class="sgatelabel" x="${x-34}" y="${y+4+(gateLabelDy||0)}" text-anchor="end"${gateCol?` style="fill:${gateCol}"`:""}>${swSubscriptLabel(gate)}</text>`;
   s+=`</g>`;
   return s;
 }
-function gndSym(x,y,col){ const st=col?` style="stroke:${col};stroke-width:2.4"`:""; return `<g class="wire"><line x1="${x-14}" y1="${y}" x2="${x+14}" y2="${y}"${st}/><line x1="${x-9}" y1="${y+5}" x2="${x+9}" y2="${y+5}"${st}/><line x1="${x-4}" y1="${y+10}" x2="${x+4}" y2="${y+10}"${st}/></g>`; }
+/* GND here is always a single fixed layout point, never a connectable
+   rail, so this is purely decorative — matches the outlined-triangle
+   ground symbol used by js/timing.js's fixed circuit diagram and
+   js/cmos.js's schematic. */
+function gndSym(x,y,col){
+  const st=col?` style="stroke:${col};stroke-width:2.4"`:"";
+  return `<path class="wire" d="M ${x-11} ${y} L ${x+11} ${y} L ${x} ${y+18} Z"${st}/>`;
+}
 function nodePill(x,y,node,val,ring){
   const vt=val===null?"?":(val===3.3?"3.3V":"0V"), w=60,h=26;
-  return `<g class="nodepill" data-node="${node}"><rect x="${x-w/2}" y="${y-h/2}" width="${w}" height="${h}" rx="7"${ring?` style="stroke:${ring};stroke-width:2.5"`:""}/><text x="${x}" y="${y+4}" text-anchor="middle">${node} = ${vt}</text></g>`;
+  return `<g class="nodepill" data-node="${node}"><rect x="${x-w/2}" y="${y-h/2}" width="${w}" height="${h}" rx="7"${ring?` style="stroke:${ring};stroke-width:2.5"`:""}/><text x="${x}" y="${y+4}" text-anchor="middle">${swSubscriptLabel(node)} = ${vt}</text></g>`;
 }
 
 /* -- build / render -- */
@@ -164,7 +186,13 @@ function renderSwToolbar(){
     return `<span class="sw-step${done?" done":""}${cur?" current":""}">${done && !cur ? "\u2713" : (i+1)}</span>`;
   }).join("");
 
-  const inputsText=p.inputs.map(g=>`${g} = ${fmtV(row[g])}`).join("\u00a0\u00a0·\u00a0\u00a0");
+  const inputChips=p.inputs.map(g=>{
+    const v=row[g], hi=v===3.3;
+    return `<div class="sw-input-card ${hi?"high":"low"}">
+      <span class="sw-input-card-value">${fmtV(v)}</span>
+      <span class="sw-input-card-name">${swSubscriptHtml(g)}</span>
+    </div>`;
+  }).join("");
 
   const legend = sw.showPath ? `<div class="sw-legend">
       <span style="color:var(--g0)"><i></i>high · to VDD (3.3 V)</span>
@@ -177,7 +205,8 @@ function renderSwToolbar(){
       <div class="combo-select">
         <span class="tg-label">Combination ${s+1} of ${N}</span>
         <div class="sw-stagebar">${dots}</div>
-        <div class="sw-stage-inputs">${inputsText}</div>
+        <div class="sw-inputs-label">Inputs</div>
+        <div class="sw-stage-inputs">${inputChips}</div>
       </div>
 
       <button
@@ -187,6 +216,8 @@ function renderSwToolbar(){
         <span class="reveal-dot"></span>
         Show conducting path
       </button>
+
+      ${legend}
     </div>
 
     <div class="sw-progress-inline">
@@ -194,8 +225,6 @@ function renderSwToolbar(){
       <button class="sw-reset-link" id="sw-reset" type="button">Reset problem</button>
       ${(DEV_MODE && s!==N-1) ? `<button type="button" class="dev-skip-link" onclick="swGoStage(${N-1})">Dev: skip to last stage &rarr;</button>` : ""}
     </div>
-
-    ${legend}
   `;
 
   document.getElementById("sw-reveal").onclick=()=>{
@@ -220,7 +249,7 @@ function renderSwCanvas(){
   for(const name in L.trans){
     const tl=L.trans[name], t=sw.net.transistors.find(t=>t.name===name), closed=a.closed.has(name);
     const liveCol=(reveal && closed && reveal.live.has(name)) ? "var(--ok)" : null;
-    s+=swGlyph(tl.x,tl.y,name,t.gate,t.kind,closed,liveCol,vColor(gateV(t.gate)));
+    s+=swGlyph(tl.x,tl.y,name,t.gate,t.kind,closed,liveCol,vColor(gateV(t.gate)),tl.labelDy);
     s+=`<rect class="sw-hit" data-name="${name}" x="${tl.x-24}" y="${tl.y-26}" width="48" height="52"/>`;
   }
   L.nodes.forEach(nd=>{

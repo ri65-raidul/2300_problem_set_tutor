@@ -419,24 +419,38 @@
   .cmos-left{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:18px; min-width:0;}
   .cmos-right{display:flex; flex-direction:column; gap:18px; min-width:0;}
   .cmos-toolbar{display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--line-soft);}
-  .tool-group{display:flex; flex-direction:column; gap:5px;}
+  .tool-group{display:flex; flex-direction:column; gap:9px;}
 
-  .schem-palette{
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-    align-items:center;
+  /* Section label used above a group of toolbar controls — same uppercase
+     mono treatment as .match-section-label, so a picker like Transistor/Gate
+     reads the same way as "Gates"/"Truth tables" do on the matching problem. */
+  .tg-label{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--muted);
   }
 
+  .schem-palette{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+
+  /* Same idle/hover card language as .match-gate-card: muted card at rest,
+     lifts to a plain white surface with a darker border on hover. */
   .palette-part{
-    display:inline-flex;
+    display:flex;
+    flex-direction:column;
     align-items:center;
-    gap:7px;
-    min-height:38px;
-    padding:7px 11px;
-    border:1px solid var(--line);
-    border-radius:8px;
-    background:var(--surface);
+    justify-content:center;
+    gap:2px;
+    padding:10px 8px 8px;
+    border:1px solid var(--line-soft);
+    border-radius:10px;
+    background:var(--ground-2);
     color:var(--ink);
     cursor:grab;
     user-select:none;
@@ -445,7 +459,7 @@
   }
 
   .palette-part:active{cursor:grabbing;}
-  .palette-part:hover{border-color:var(--ink);}
+  .palette-part:hover{border-color:var(--line); background:var(--surface);}
 
   .palette-symbol{
     position:relative;
@@ -635,15 +649,20 @@
   .slot.filled{stroke:none;}
   .slot-hit{fill:transparent; cursor:pointer;}
   .slot-hit:hover{stroke:none;}
-  .tsym line, .tsym path, .tsym circle{stroke:var(--ink); stroke-width:1.6; fill:none;}
+  .tsym line, .tsym path, .tsym circle{stroke:var(--ink); stroke-width:2; fill:none;}
   .tsym .term{stroke:var(--ink-soft);}
-  .tsym text{font-family:"IBM Plex Mono",monospace; font-size:9px; fill:var(--ink-soft); stroke:none;}
-  .tsym .tname{fill:var(--muted);}
+  .tsym text{font-family:"IBM Plex Sans",sans-serif; stroke:none;}
+  /* Two label tiers, matching js/timing.js's fixed circuit diagram: the net
+     feeding a gate (Va/Vb/...) reads as the bold, prominent label, while the
+     transistor's own name (P0/N0/...) stays smaller and secondary. */
+  .tsym .tname{font-size:12px; font-weight:600; fill:var(--ink-soft);}
+  .tsym .tgate{font-size:16px; font-weight:700; fill:var(--ink);}
   .wire{stroke:var(--ink-soft); stroke-width:1.6; fill:none;}
   .rail{stroke:var(--ink); stroke-width:2; fill:none;}
+  .ground-tri{fill:none; stroke:var(--ink); stroke-width:2; stroke-linejoin:round;}
   .node-dot{fill:var(--ink);}
-  .vy-tag{font-family:"IBM Plex Mono",monospace; font-size:13px; fill:var(--ink); stroke:none; font-weight:600;}
-  .pwr-tag{font-family:"IBM Plex Mono",monospace; font-size:11px; fill:var(--muted); stroke:none;}
+  .vy-tag{font-family:"IBM Plex Sans",sans-serif; font-size:16px; fill:var(--ink); stroke:none; font-weight:700;}
+  .pwr-tag{font-family:"IBM Plex Mono",monospace; font-size:12px; fill:var(--muted); stroke:none;}
 
   /* ---- CMOS sim table ---- */
   .table-note{font-size:12.5px; color:var(--muted); margin-bottom:12px;}
@@ -653,14 +672,32 @@
     overflow-x:auto;
     overscroll-behavior-x:contain;
   }
-  .simtable{border-collapse:collapse; font-family:"IBM Plex Mono",monospace; font-size:12.5px; width:100%;} 
-  .simtable th,.simtable td{border:1px solid var(--line); padding:0; text-align:center;}
-  .simtable th{background:var(--ground-2); color:var(--ink-soft); font-weight:600; padding:6px 4px; font-size:11px;}
-  .simtable th.grp-in{color:var(--ink);}
-  .simtable th.grp-p{color:var(--g2);}
-  .simtable th.grp-n{color:var(--g0);}
-  .simtable td.given{background:var(--ground-2); color:var(--muted); padding:6px 8px;}
-  .simtable td.tcell,.simtable td.vy{cursor:pointer; height:30px; min-width:34px; color:var(--ink); user-select:none;}
+  /* Matches the .gate-truth-table convention (js/glnet.js): monospace,
+     centered, a thick top/bottom frame and a thick rule under the header,
+     thin rules between rows, and the fillable columns tinted like a
+     "derived" column there. */
+  .simtable{
+    border-collapse:collapse;
+    table-layout:fixed;
+    font-family:"IBM Plex Mono",monospace;
+    font-size:13px;
+    width:100%;
+    border-top:2px solid var(--ink);
+    border-bottom:2px solid var(--ink);
+  }
+  .simtable th,.simtable td{border:none; border-bottom:1px solid var(--line); height:38px; padding:0 12px; text-align:center;}
+  .simtable th{background:var(--surface); color:var(--ink-soft); font-weight:600; font-size:12px; border-bottom:2px solid var(--ink);}
+  .simtable th.grp-p,.simtable th.grp-n,.simtable th.grp-node{color:var(--focus); background:#eef3ff;}
+  /* table-layout:fixed takes its column widths from the header row only, so
+     a cell's content (e.g. a "0V"/"3.3V"/blank node value cycling on click)
+     never changes the table's layout — set widths here instead of letting
+     body content drive them. */
+  .simtable th.grp-in,.simtable th.grp-node{width:80px;}
+  .simtable th.grp-p,.simtable th.grp-n{width:60px;}
+  .simtable td.given{color:var(--muted);}
+  .simtable td,.simtable th{overflow:hidden; text-overflow:clip;}
+  .simtable sub{font-size:65%;}
+  .simtable td.tcell,.simtable td.vy{cursor:pointer; color:var(--ink); user-select:none;}
   .simtable td.tcell:hover,.simtable td.vy:hover{background:#eef3ff;}
   .simtable td.tcell.c{color:var(--g4); font-weight:700;}
   .simtable td.vy{font-weight:600;}
@@ -812,13 +849,17 @@
   .row-tab{font-family:"IBM Plex Mono",monospace; font-size:12px; padding:6px 10px; border:1px solid var(--line); border-radius:8px; background:var(--surface); cursor:pointer; color:var(--ink-soft);}
   .row-tab.on{background:var(--ink); color:#fff; border-color:var(--ink);}
 
-  .sw .sterm,.sw .sgate{stroke:var(--ink-soft); stroke-width:1.6; fill:none;}
-  .sw .sgatebubble{stroke:var(--ink-soft); stroke-width:1.4; fill:var(--surface);}
+  .sw .sterm,.sw .sgate{stroke:var(--ink-soft); stroke-width:2; fill:none;}
+  .sw .sgatebubble{stroke:var(--ink-soft); stroke-width:1.6; fill:var(--surface);}
   .sw .scontact{fill:var(--ink); stroke:none;}
   .sw .slever{stroke:var(--ink); stroke-width:2.6; fill:none; stroke-linecap:round;}
   .sw.open .slever{stroke:var(--muted);}
-  .sw text{font-family:"IBM Plex Mono",monospace; font-size:9.5px; fill:var(--ink-soft); stroke:none;}
-  .sw .sname{fill:var(--muted);}
+  .sw text{font-family:"IBM Plex Sans",sans-serif; stroke:none;}
+  /* Two label tiers, matching js/timing.js's and js/cmos.js's schematics:
+     the net feeding a gate (Va/Vb/...) is the bold, prominent label; the
+     transistor's own name (P0/N0/...) stays smaller and secondary. */
+  .sw .sname{font-size:12px; font-weight:600; fill:var(--ink-soft);}
+  .sw .sgatelabel{font-size:16px; font-weight:700; fill:var(--ink);}
   .sw-hit{fill:transparent; cursor:pointer;}
   .sw-hit:hover{fill:rgba(47,107,255,0.07);}
   .nodepill{cursor:pointer;}
@@ -1084,16 +1125,33 @@
   .simtable td.ok-col.fail{color:var(--err); font-weight:700;}
 
   /* ---- timing diagram ---- */
-  .timing-wrap{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:22px;align-items:start;}
-  @media(max-width:820px){.timing-wrap{grid-template-columns:1fr;}}
   .timing-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;}
+  .timing-inline-feedback{margin-top:14px;}
   .timing-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line-soft);}
   .timing-toolbar .tg-label{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);}
   .timing-mode{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
   .timing-mode button{border:0;border-right:1px solid var(--line);background:var(--surface);color:var(--ink-soft);font-family:"IBM Plex Mono",monospace;font-size:12px;padding:7px 11px;cursor:pointer;}
   .timing-mode button:last-child{border-right:0}.timing-mode button.on{background:var(--ink);color:#fff;}
   .timing-svg{display:block;width:100%;height:auto;touch-action:none;}
-  .timing-grid{stroke:var(--line-soft);stroke-width:1}.timing-axis{stroke:var(--ink-soft);stroke-width:1.4;}
+  /* Circuit + its reference truth table side by side. The table takes its
+     own compact natural width and the circuit flexes to fill the rest. */
+  .timing-circuit-row{display:flex;gap:20px;align-items:flex-start;}
+  .timing-circuit-col{flex:1 1 0;min-width:0;}
+  .timing-tableref-col{flex:1 1 0;min-width:0;}
+  @media(max-width:700px){
+    .timing-circuit-row{flex-direction:column;width:100%;}
+    .timing-tableref-col{flex:1 1 auto;width:100%;}
+  }
+  /* Reference truth table (stages B–E): compact and read-only, scrolls
+     horizontally in its own box on very narrow layouts rather than
+     squeezing the circuit. */
+  #timing-table-ref{overflow-x:auto;}
+  #timing-table-ref .simtable{min-width:0; font-size:12px;}
+  #timing-table-ref .simtable th,
+  #timing-table-ref .simtable td{padding:6px 8px;}
+  #timing-table-ref .simtable th.grp-in,#timing-table-ref .simtable th.grp-node{width:36px;}
+  #timing-table-ref .simtable th.grp-p,#timing-table-ref .simtable th.grp-n{width:26px;}
+  .timing-grid{stroke:var(--line-soft);stroke-width:1}.timing-axis{stroke:var(--ink);stroke-width:2.2;}
   .timing-wave-given{fill:none;stroke:var(--ink);stroke-width:2;stroke-linejoin:round;stroke-linecap:round;}
   .timing-wave-answer{fill:none;stroke:var(--focus);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round;}
   .timing-wave-expected{fill:none;stroke:var(--ok);stroke-width:2;stroke-dasharray:5 4;opacity:.9;}
@@ -1114,11 +1172,32 @@
     opacity:.35;
     pointer-events:none;
   }
+  .timing-erase-edge{
+    stroke:var(--err);
+    stroke-width:6;
+    stroke-linecap:round;
+    opacity:.85;
+    pointer-events:none;
+  }
   .timing-hit{
     cursor:crosshair;
   }
   .timing-instruction{font-size:12.5px;color:var(--muted);line-height:1.5;margin-bottom:12px;}
-  .timing-side{display:flex;flex-direction:column;gap:14px;}
+  /* The actual delay numbers a stage wants used, pulled out of the muted
+     instruction prose into their own high-contrast badges so they're easy
+     to spot and reference while drawing. */
+  .timing-delay-chips{display:flex;flex-wrap:wrap;gap:8px;margin:-2px 0 14px;}
+  .timing-delay-chip{
+    display:inline-block;
+    font-family:"IBM Plex Mono",monospace;
+    font-size:13px;
+    background:#eef3ff;
+    border:1px solid var(--focus);
+    color:var(--ink);
+    border-radius:8px;
+    padding:6px 12px;
+  }
+  .timing-delay-chip b{color:var(--focus);}
 
   .timing-circuit-wrap{
     margin-bottom:14px;
@@ -1140,12 +1219,14 @@
   .timing-circuit-svg{
     display:block;
     width:100%;
+    max-width:490px;
     height:auto;
+    margin:0 auto;
   }
 
   .timing-circuit-wire{
     stroke:var(--ink-soft);
-    stroke-width:1.8;
+    stroke-width:2.1;
     fill:none;
     stroke-linecap:round;
     stroke-linejoin:round;
@@ -1156,9 +1237,24 @@
   }
 
   .timing-circuit-label{
-    font-family:"IBM Plex Mono",monospace;
-    font-size:12px;
+    font-family:"IBM Plex Sans",sans-serif;
+    font-size:16px;
+    font-weight:600;
     fill:var(--ink);
+  }
+
+  .timing-circuit-net-label{
+    font-family:"IBM Plex Sans",sans-serif;
+    font-size:23px;
+    font-weight:600;
+    fill:var(--ink);
+  }
+
+  .timing-circuit-ground{
+    fill:none;
+    stroke:var(--ink-soft);
+    stroke-width:2.1;
+    stroke-linejoin:round;
   }
 
   .timing-circuit-gate{
@@ -1174,15 +1270,9 @@
     font-weight:600;
   }
 
-  .timing-circuit-delay{
-    font-family:"IBM Plex Mono",monospace;
-    font-size:10px;
-    fill:var(--muted);
-  }
-
   .timing-circuit-trans{
     stroke:var(--ink-soft);
-    stroke-width:1.7;
+    stroke-width:2.1;
     fill:none;
     stroke-linecap:round;
     stroke-linejoin:round;
@@ -1191,7 +1281,7 @@
   .timing-circuit-bubble{
     fill:var(--surface);
     stroke:var(--ink-soft);
-    stroke-width:1.5;
+    stroke-width:2;
   }
 
   /* ===================================================================
@@ -1389,19 +1479,9 @@
   }
 
   /* ===================================================================
-     CMOS solver v3.3 — hard gate: Continue button reveals Simulate
-     =================================================================== */
-  .cmos-continue{
-    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
-    margin-top:14px; padding-top:14px;
-    border-top:1px solid var(--line-soft);
-  }
-  .cmos-continue-hint{
-    font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--muted);
-  }
-
-  /* ===================================================================
-     CMOS solver v3.4 — solved table state + completion actions
+     CMOS solver — solved state: one dynamic action row per stage swaps
+     Check/Reset for Continue, and Check table for Explore-more, so there's
+     never a second "you're done" row layered under the first.
      =================================================================== */
   .cmos-sim{transition:border-color .18s ease, box-shadow .18s ease;}
   .cmos-sim.is-correct{
@@ -1410,14 +1490,6 @@
   }
   .cmos-sim.is-correct .workspace-number{
     background:var(--ok); border-color:var(--ok); color:#fff;
-  }
-  .cmos-complete-actions{
-    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
-    margin-top:14px; padding-top:14px;
-    border-top:1px solid var(--line-soft);
-  }
-  .cmos-complete-msg{
-    font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ok); font-weight:600;
   }
 
   /* ===================================================================
@@ -1454,12 +1526,6 @@
   .sw-step.current{border-color:var(--focus); color:var(--focus); font-weight:600; box-shadow:0 0 0 1px var(--focus);}
   .sw-step.done{border-color:var(--ok); color:var(--ok); background:var(--ok-bg);}
 
-  .sw-stage-inputs{
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-  }
-
   .sw-inputs-label{
     margin-top:2px;
     font-family:"IBM Plex Mono",monospace;
@@ -1470,38 +1536,68 @@
     color:var(--muted);
   }
 
-  .sw-input-chip{
-    display:flex;
-    align-items:center;
-    gap:9px;
-    min-height:46px;
-    padding:9px 12px;
-    border:1px solid var(--line);
-    border-left:4px solid currentColor;
-    border-radius:9px;
+  /* Input readouts, styled as the same idle-card language as
+     .match-gate-card (rounded card on a muted ground, bold mono identity
+     label, hover lift) — the big colored value stands in for match's gate
+     icon as the card's primary visual, since there's no icon for a voltage. */
+  .sw-stage-inputs{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(72px,1fr));
+    gap:8px;
+  }
+  .sw-input-card{
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+    padding:12px 8px 10px; border:1px solid var(--line-soft); border-radius:10px;
+    background:var(--ground-2);
+    transition:border-color .14s ease, background .14s ease;
+  }
+  .sw-input-card:hover{border-color:var(--line); background:var(--surface);}
+  .sw-input-card-value{
     font-family:"IBM Plex Mono",monospace;
-    font-weight:600;
-    background:var(--surface);
+    font-size:19px;
+    font-weight:700;
+    line-height:1;
   }
-
-  .sw-input-chip.low{color:var(--g2);}
-  .sw-input-chip.high{color:var(--g0);}
-
-  .sw-input-name{
-    min-width:24px;
-    font-size:16px;
-    color:var(--ink);
-  }
-
-  .sw-input-equals{
-    font-size:16px;
+  .sw-input-card.low .sw-input-card-value{color:var(--g2);}
+  .sw-input-card.high .sw-input-card-value{color:var(--g0);}
+  .sw-input-card-name{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.04em;
     color:var(--muted);
   }
+  .sw-input-card-name sub{color:var(--muted);}
 
-  .sw-input-value{
-    font-size:19px;
-    line-height:1;
-    color:currentColor;
+  /* "Show conducting path" toggle — same pill language as a match-gate-card,
+     but a solid on/off state since this is a view toggle, not a pick-one card. */
+  .reveal-btn{
+    display:flex; align-items:center; gap:8px; align-self:flex-start;
+    padding:9px 13px; border:1px solid var(--line); border-radius:9px;
+    background:var(--surface); color:var(--ink-soft);
+    font:inherit; font-size:12.5px; font-weight:600; cursor:pointer;
+    transition:border-color .14s ease, background .14s ease, color .14s ease;
+  }
+  .reveal-btn:hover{border-color:var(--ink-soft);}
+  .reveal-dot{
+    width:9px; height:9px; border-radius:50%; flex:none;
+    background:var(--line); transition:background .14s ease;
+  }
+  .reveal-btn.on{
+    border-color:var(--focus); background:#eef3ff; color:var(--focus);
+  }
+  .reveal-btn.on .reveal-dot{background:var(--focus);}
+
+  /* Color-key legend shown once the conducting path is revealed. */
+  .sw-legend{
+    display:flex; flex-wrap:wrap; gap:8px 16px;
+    margin-top:12px; padding-top:12px; border-top:1px solid var(--line-soft);
+    font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--ink-soft);
+  }
+  .sw-legend span{display:inline-flex; align-items:center; gap:6px;}
+  .sw-legend i{
+    width:10px; height:10px; border-radius:3px; flex:none;
+    background:currentColor; display:inline-block;
   }
 
   /* Quiet reset, tucked next to the progress line. */
@@ -1541,7 +1637,11 @@
   .t-step.current{border-color:var(--focus); color:var(--focus); font-weight:600; box-shadow:0 0 0 1px var(--focus);}
   .t-step.done{border-color:var(--ok); color:var(--ok); background:var(--ok-bg);}
 
-  .timing-actions{display:flex; gap:9px; flex-wrap:wrap;}
+  .timing-actions{
+    display:flex; gap:9px; flex-wrap:wrap;
+    margin-top:18px; padding-top:16px;
+    border-top:1px solid var(--line-soft);
+  }
 
   .timing-draw-hint{
     font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--muted);
@@ -1562,11 +1662,9 @@
 
   /* Timing stage-A truth table: give the 10 columns room; scroll if narrow. */
   #timing-table{width:100%; overflow-x:auto; overscroll-behavior-x:contain; margin:4px 0 6px;}
-  #timing-table .simtable{min-width:540px;}
-  #timing-table .simtable th{padding:7px 6px; font-size:11px; white-space:nowrap;}
-  #timing-table .simtable td.tcell,
-  #timing-table .simtable td.vy{min-width:40px; height:32px;}
-  #timing-table .simtable td.given{white-space:nowrap;}
+  #timing-table .simtable{min-width:680px;}
+  #timing-table .simtable th,
+  #timing-table .simtable td{white-space:nowrap;}
 
   /* ---- gate-level network timing analysis (truth table -> path analysis -> diagram) ---- */
   .gl-card{padding:20px; transition:border-color .18s ease, box-shadow .18s ease;}
@@ -1617,13 +1715,44 @@
   .gl-num-cell.mark-good,.gl-toggle-cell.mark-good,.gl-path-cell.mark-good{background:var(--ok-bg);}
   .gl-num-cell.mark-bad,.gl-toggle-cell.mark-bad,.gl-path-cell.mark-bad{background:var(--err-bg);}
 
-  .gl-diagram-hint{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--muted); margin-bottom:8px; line-height:1.6;}
-  .gl-diagram-hint kbd{
+  /* "?" badge next to a section label (e.g. "Timing diagram") that reveals its
+     instructions in a tooltip on hover/focus, instead of the instructions
+     sitting on the page as a permanent line of text. The label itself is
+     uppercase/letter-spaced (.match-section-label); the badge and its tooltip
+     opt back out of that so the badge stays a plain "?" and the tooltip text
+     stays normal sentence case. */
+  .gl-help{
+    position:relative; display:inline-flex; align-items:center; justify-content:center;
+    width:15px; height:15px; margin-left:6px; vertical-align:middle;
+    border:1px solid var(--line); border-radius:50%;
+    font-family:"IBM Plex Mono",monospace; font-size:10px; font-weight:700;
+    text-transform:none; letter-spacing:normal; color:var(--muted); cursor:help;
+  }
+  .gl-help:hover,.gl-help:focus-visible{border-color:var(--focus); color:var(--focus); outline:none;}
+  .gl-help-tip{
+    position:absolute; z-index:6; left:0; top:calc(100% + 8px);
+    width:280px; max-width:70vw;
+    background:var(--surface); color:var(--ink-soft);
+    border:1px solid var(--line); border-radius:8px;
+    box-shadow:0 8px 20px rgba(15,23,42,.12);
+    padding:10px 12px;
+    font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:400;
+    text-transform:none; letter-spacing:normal; line-height:1.6; text-align:left;
+    opacity:0; transform:translateY(-4px); pointer-events:none;
+    transition:opacity .12s ease, transform .12s ease;
+  }
+  .gl-help:hover .gl-help-tip,.gl-help:focus-visible .gl-help-tip{opacity:1; transform:translateY(0);}
+  .gl-help-tip kbd{
     font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--ink-soft);
     background:var(--ground-2); border:1px solid var(--line); border-radius:4px;
     padding:1px 5px; margin:0 1px;
   }
   .gl-diagram-svg-wrap{overflow-x:auto;}
+  /* Rendered at its true pixel size (via width/height attributes) rather than
+     timing.js's own stretch-to-fill ".timing-svg" — a network's duration
+     varies per problem, so a longer one needs the wrap's horizontal scroll
+     to stay legible instead of being squeezed down to fit. */
+  .gl-timing-svg{display:block; touch-action:none;}
   /* Unknown region: a fully bordered box (vertical edges at t_cd/t_pd, plus top
      and bottom) shaded blue inside — no diagonal crossing. The border uses its
      own stroke-opacity so it stays crisp while the fill stays subtle. */
@@ -1636,14 +1765,18 @@
   .gl-hover-preview{stroke:var(--focus); stroke-width:2.6; stroke-linecap:round; opacity:.75;}
   .gl-hover-unknown{fill:var(--focus); opacity:.22;}
   .gl-hover-edge{stroke:var(--focus); stroke-width:2; opacity:.6;}
+  /* Hovering the edge of an already-drawn cell offers to erase it instead —
+     same red "about to remove" treatment as js/timing.js's own edge-erase. */
+  .gl-hover-erase{stroke:var(--err); stroke-width:6; stroke-linecap:round; opacity:.85;}
+  .gl-hover-erase-unknown{fill:var(--err); opacity:.3;}
 
   .gl-actions{margin-top:18px;}
   .gl-feedback-card{margin-top:14px;}
 
   /* ---- Sum of canonical products (js/sop.js) ---- */
+  .sop-workspace{padding:20px; transition:border-color .18s ease,box-shadow .18s ease;}
   .sop-layout{display:grid; grid-template-columns:240px 1fr; gap:20px; align-items:start; margin-top:16px;}
   @media (max-width:760px){ .sop-layout{grid-template-columns:1fr;} }
-  .sop-canvas-toolbar{margin-bottom:8px;}
   .sop-canvas-wrap{
     border:1px solid var(--line-soft); border-radius:10px; background:var(--surface);
     padding:14px; overflow-x:auto;
@@ -1651,6 +1784,11 @@
   .sop-rail-hit{fill:transparent; cursor:crosshair;}
   .sop-wire{fill:none; stroke:var(--ink-soft); stroke-width:1.8; stroke-linejoin:round; stroke-linecap:round; pointer-events:none;}
   .sop-tap-dot{fill:var(--ink); pointer-events:none;}
+  /* Wide invisible click target so a placed wire is easy to grab anywhere
+     along its length, not just at the pin — same pattern as .schem-wire-hit. */
+  .sop-wire-hit{fill:none; stroke:transparent; stroke-width:14; stroke-linecap:round; cursor:pointer;}
+  .sop-wire-unit:hover .sop-wire{stroke:var(--err); stroke-width:2.2;}
+  .sop-wire-unit:hover .sop-tap-dot{fill:var(--err);}
   .sop-snap-dot{fill:var(--focus); opacity:.5; pointer-events:none;}
   .sop-and-group.mark-good .gate-symbol{fill:var(--ok-bg); stroke:var(--ok);}
   .sop-and-group.mark-good .sop-wire{stroke:var(--ok);}
@@ -1662,6 +1800,7 @@
   .sop-feedback-card{margin-top:14px;}
   .sop-workspace.is-correct{border-color:var(--ok); box-shadow:0 0 0 1px var(--ok),0 2px 10px rgba(15,138,95,.10);}
   .sop-workspace.is-correct .workspace-number{background:var(--ok); border-color:var(--ok); color:#fff;}
+  .sop-workspace.is-correct{animation:cmos-correct-pop .3s ease-out;}
 
   /* Landing hero: "early prototype" + bug-report notice */
   .study-note{

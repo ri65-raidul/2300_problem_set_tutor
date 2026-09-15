@@ -159,20 +159,12 @@
             <div class="cmos-toolbar" id="cmos-toolbar"></div>
             <div class="cmos-canvas-col">
               <div class="cmos-canvas" id="cmos-canvas"></div>
-              <div class="figcap"><b>Fig. 1</b> — CMOS network</div>
             </div>
           </div>
-          <div class="btn-row cmos-build-actions">
-            <button class="btn" onclick="cmosCheckBuild()">Check circuit</button>
-            <button class="btn ghost" onclick="cmosReset()">Reset</button>
-          </div>
+          <div class="btn-row cmos-build-actions" id="cmos-build-actions"></div>
           <div class="card build-feedback" id="cmos-build-feedback-card" style="display:none;">
             <h3>Feedback</h3>
             <div class="feedback" id="cmos-build-feedback"></div>
-          </div>
-          <div class="cmos-continue" id="cmos-continue" style="display:none;">
-            <button class="btn" id="cmos-continue-btn" onclick="cmosContinueToSim()">Continue to simulation &rarr;</button>
-            <span class="cmos-continue-hint">Your circuit is verified — move on to fill in its truth table.</span>
           </div>
         </div>
 
@@ -192,18 +184,10 @@
           </div>
           <div class="table-note">Mark closed transistors with <b>C</b>, then set V<sub>y</sub>.</div>
           <div id="cmos-table"></div>
-          <div class="btn-row cmos-sim-actions">
-            <button class="btn" id="cmos-check-table-btn" onclick="cmosCheckTable()">Check table</button>
-            <button class="btn ghost" id="cmos-back-build-btn" onclick="cmosBackToBuild()">Back to circuit</button>
-          </div>
+          <div class="btn-row cmos-sim-actions" id="cmos-sim-actions"></div>
           <div class="card" id="cmos-feedback-card" style="display:none;">
             <h3>Feedback</h3>
             <div class="feedback" id="cmos-feedback"></div>
-          </div>
-          <div class="cmos-complete-actions" id="cmos-complete-actions" style="display:none;">
-            <span class="cmos-complete-msg">Solved — this problem is complete.</span>
-            <button class="btn" onclick="cmosExploreMoreProblems()">Explore more problems &rarr;</button>
-            <button class="btn ghost" onclick="cmosBackToBuild()">Back to circuit</button>
           </div>
         </div>
 
@@ -226,7 +210,6 @@
             <div class="sw-toolbar" id="sw-toolbar"></div>
             <div class="cmos-canvas" id="sw-canvas"></div>
           </div>
-          <div class="figcap"><b>Fig. 1</b> — Switch-level schematic</div>
 
           <div class="sw-actions" id="sw-actions"></div>
 
@@ -398,7 +381,7 @@
           <span class="workspace-number">01</span>
           <div>
             <div class="workspace-title">Wire the sum of canonical products</div>
-            <div class="workspace-desc">Drag from a literal's line to an AND gate's input pin. Click a connected pin to remove it.</div>
+            <div class="workspace-desc">Drag from a signal's line to an AND gate's input pin. Click a wire to remove it.</div>
           </div>
         </div>
 
@@ -409,7 +392,6 @@
           </div>
           <div class="sop-col sop-col-canvas">
             <div class="match-section-label">Gate-level network</div>
-            <div class="sop-canvas-toolbar" id="sop-canvas-toolbar"></div>
             <div class="sop-canvas-wrap" id="sop-canvas"></div>
           </div>
         </div>
@@ -433,8 +415,7 @@
 
     <!-- TYPE: TIMING DIAGRAM -->
     <div id="solver-timing" style="display:none;">
-      <div class="timing-wrap">
-        <div class="timing-card" id="timing-main-card">
+      <div class="timing-card" id="timing-main-card">
           <div class="workspace-heading">
             <span class="workspace-number" id="timing-stage-num">6.A</span>
             <div>
@@ -446,11 +427,20 @@
           <div class="timing-stagebar" id="timing-stagebar"></div>
 
           <div class="timing-circuit-wrap">
-            <div class="timing-circuit-title">Circuit</div>
-            <div id="timing-circuit"></div>
+            <div class="timing-circuit-row">
+              <div class="timing-circuit-col">
+                <div class="timing-circuit-title">Circuit</div>
+                <div id="timing-circuit"></div>
+              </div>
+              <div class="timing-tableref-col" id="timing-tableref-col" style="display:none;">
+                <div class="timing-circuit-title">Truth table</div>
+                <div id="timing-table-ref"></div>
+              </div>
+            </div>
           </div>
 
           <div class="timing-instruction" id="timing-instruction"></div>
+          <div class="timing-delay-chips" id="timing-delay-chips" style="display:none;"></div>
 
           <!-- Stage A: truth table -->
           <div id="timing-table"></div>
@@ -458,18 +448,20 @@
           <!-- Stages B–E: timing diagram -->
           <div id="timing-diagram-wrap">
             <div class="timing-toolbar">
+              <button class="btn ghost sm" id="timing-undo" type="button" disabled>Undo</button>
               <button class="btn ghost sm" id="timing-clear" type="button">Clear drawing</button>
-              <span class="timing-draw-hint">Hover a row to preview, then click or drag in the V<sub>x</sub> and V<sub>y</sub> rows to draw.</span>
+              <span class="timing-draw-hint">Hover a row to preview, then click or drag to draw. Click or drag near a cell's edge to erase it.</span>
             </div>
             <div id="timing-canvas"></div>
             <div class="figcap"><b>Fig. 1</b> — Timing diagram</div>
           </div>
-        </div>
-        <div class="timing-side">
-          <div class="card"><h3>Model</h3><div id="timing-model-text" class="hint" style="margin-top:0;"></div></div>
+
           <div class="timing-actions" id="timing-actions"></div>
-          <div class="card" id="timing-feedback-card" style="display:none;"><h3>Feedback</h3><div class="feedback" id="timing-feedback"></div></div>
-        </div>
+
+          <div class="card timing-inline-feedback" id="timing-feedback-card" style="display:none;">
+            <h3>Feedback</h3>
+            <div class="feedback" id="timing-feedback"></div>
+          </div>
       </div>
     </div>
   </section>
