@@ -41,20 +41,20 @@ const TSTAGES=[
     desc:"Get to know the circuit by completing its truth table.",
     instr:"As a first step, complete the table to get to know the logical behaviour of this circuit. Label closed transistors with <b>C</b> and leave cells of open transistors empty.",
     model:null },
-  { key:"B", kind:"draw", model:"zero", num:"6.B", title:"Timing diagram — zero-delay model",
+  { key:"B", kind:"draw", model:"zero", num:"6.B", title:"Timing diagram: zero-delay model",
     desc:"Draw V\u2093 and V\u1d67 assuming no gate delay.",
-    instr:"Complete the timing diagram for a <b>zero-delay model</b>. Remember from Topic 1 that voltages change <i>continuously</i> between levels — they never jump instantly from one level to the other." },
-  { key:"C", kind:"draw", model:"const", num:"6.C", title:"Timing diagram — constant-delay model",
+    instr:"Complete the timing diagram for a <b>zero-delay model</b>. The circuit and truth table from last stage is provided below for reference." },
+  { key:"C", kind:"draw", model:"const", num:"6.C", title:"Timing diagram: constant-delay model",
     desc:"Draw V\u2093 and V\u1d67 with a fixed gate delay.",
     instr:"Complete the timing diagram for a <b>constant-delay model</b>. Use the delays below for the inverter and the NAND gate.",
     delays:["t<sub>inv</sub> = <b>10 ps</b>","t<sub>nand</sub> = <b>20 ps</b>"] },
-  { key:"D", kind:"draw", model:"inputdep", num:"6.D", title:"Timing diagram — input-dependent constant delay",
+  { key:"D", kind:"draw", model:"inputdep", num:"6.D", title:"Timing diagram: input-dependent constant delay",
     desc:"Draw V\u2093 and V\u1d67 with per-path delays.",
     instr:"Complete the timing diagram for an <b>input-dependent constant-delay model</b>. Use the per-path delays below.",
     delays:["t<sub>a\u2192x</sub> = <b>10 ps</b>","t<sub>b\u2192y</sub> = <b>20 ps</b>","t<sub>x\u2192y</sub> = <b>10 ps</b>"] },
-  { key:"E", kind:"draw", model:"trans", num:"6.E", title:"Timing diagram — transition- & input-dependent delay",
+  { key:"E", kind:"draw", model:"trans", num:"6.E", title:"Timing diagram: transition- & input-dependent delay",
     desc:"Draw V\u2093 and V\u1d67 with per-path, per-edge delays.",
-    instr:"Complete the timing diagram for a <b>transition- and input-dependent delay model</b>. The delay depends on the direction of the resulting output edge \u2014 use the per-path, per-edge delays below.",
+    instr:"Complete the timing diagram for a <b>transition- and input-dependent delay model</b>. The delay depends on the direction of the resulting output edge; use the per-path, per-edge delays below.",
     delays:["t<sub>a\u2192x,hl</sub> = <b>10 ps</b>","t<sub>a\u2192x,lh</sub> = <b>20 ps</b>","t<sub>b\u2192y,hl</sub> = <b>20 ps</b>","t<sub>b\u2192y,lh</sub> = <b>30 ps</b>","t<sub>x\u2192y,hl</sub> = <b>10 ps</b>","t<sub>x\u2192y,lh</sub> = <b>30 ps</b>"] }
 ];
 
@@ -255,22 +255,6 @@ function buildTiming(p){
     }
   });
 
-  const clr=document.getElementById("timing-clear");
-  if(clr) clr.onclick=()=>{
-    const s=TSTAGES[timing.stage];
-    if(s.kind!=="draw") return;
-    tPushUndo(s.key);
-    timing.draw[s.key].Vx.fill(null);
-    timing.draw[s.key].Vy.fill(null);
-    timing.verdict=false;
-    timing.completed.delete(timing.stage);
-    tShow("timing-feedback-card","none");
-    timingRefresh();
-  };
-
-  const undoBtn=document.getElementById("timing-undo");
-  if(undoBtn) undoBtn.onclick=timingUndo;
-
   timingRefresh();
   tShow("timing-feedback-card","none");
 }
@@ -342,13 +326,18 @@ function timingRenderActions(){
   const solved=timing.completed.has(s);
   const isLast=s===N-1;
   const back = s>0 ? `<button class="btn ghost" type="button" onclick="timingPrev()">&larr; Previous</button>` : "";
+  // Undo/Clear only make sense on a drawing stage, and sit next to the
+  // submit/next button rather than in their own toolbar above the canvas.
+  const drawTools = TSTAGES[s].kind==="draw"
+    ? `<button class="btn ghost" type="button" id="timing-undo" onclick="timingUndo()">Undo</button><button class="btn ghost" type="button" onclick="timingClearDrawing()">Clear drawing</button>`
+    : "";
   let html;
   if(!solved){
-    html=`<button class="btn" type="button" onclick="timingCheck()">Submit ${TSTAGES[s].kind==="table"?"table":"diagram"}</button>${back}`;
+    html=`<button class="btn" type="button" onclick="timingCheck()">Submit ${TSTAGES[s].kind==="table"?"table":"diagram"}</button>${drawTools}${back}`;
   } else if(isLast){
-    html=`<button class="btn" type="button" onclick="timingExploreMoreProblems()">Explore more problems &rarr;</button>${back}`;
+    html=`<button class="btn" type="button" onclick="timingExploreMoreProblems()">Explore more problems &rarr;</button>${drawTools}${back}`;
   } else {
-    html=`<button class="btn" type="button" onclick="timingNext()">Next stage &rarr;</button>${back}`;
+    html=`<button class="btn" type="button" onclick="timingNext()">Next stage &rarr;</button>${drawTools}${back}`;
   }
   host.innerHTML=html;
 }
@@ -387,6 +376,17 @@ function timingUndo(){
   timingRenderActions();
   timingUpdateCardState();
   timingUpdateUndoButton();
+}
+function timingClearDrawing(){
+  const s=TSTAGES[timing.stage];
+  if(s.kind!=="draw") return;
+  tPushUndo(s.key);
+  timing.draw[s.key].Vx.fill(null);
+  timing.draw[s.key].Vy.fill(null);
+  timing.verdict=false;
+  timing.completed.delete(timing.stage);
+  tShow("timing-feedback-card","none");
+  timingRefresh();
 }
 function timingUpdateUndoButton(){
   const btn=document.getElementById("timing-undo");
@@ -517,7 +517,9 @@ function renderTimingDiagram(){
   // (whether it's "inside" a signal or "between" two signals) is ever a
   // different height than any other.
   const cell=binW, rowSwing=cell, rowGap=cell, rowPitch=rowSwing+rowGap;
-  const plotBottom=top+rowPitch*(TSIGNALS.length-1)+rowSwing;
+  // One extra blank cell-row between the last signal and the time axis, so the
+  // axis doesn't sit flush against Vy's own bottom gridline.
+  const plotBottom=top+rowPitch*(TSIGNALS.length-1)+rowSwing+cell;
   const H=plotBottom+40;
 
   const geom={};
@@ -529,7 +531,7 @@ function renderTimingDiagram(){
     const x=left+i*binW;
     svg+=`<line class="timing-grid" x1="${x}" y1="${top}" x2="${x}" y2="${plotBottom}"/>`;
   }
-  svg+=`<line class="timing-axis" x1="${left}" y1="${top}" x2="${left}" y2="${plotBottom}"/>`;
+  svg+=`<line class="timing-axis" x1="${left}" y1="${top}" x2="${left}" y2="${plotBottom+4}"/>`;
 
   TSIGNALS.forEach((name)=>{
     const g=geom[name];
@@ -542,9 +544,15 @@ function renderTimingDiagram(){
     if(TGIVEN[name]){
       svg+=`<path class="timing-wave-given" d="${timingPath(TGIVEN[name],left,g.hi,g.lo,binW)}"/>`;
     } else {
+      // Wrapped in its own group (rather than an unconditional <path>) so a
+      // later edit can clear just this hint without a full re-render — see
+      // refresh() below, which empties it back out the moment the student
+      // draws again after a wrong submission.
+      svg+=`<g id="exp-${name}">`;
       if(timing.verdict){
         svg+=`<path class="timing-wave-expected" d="${timingPath(expected[name],left,g.hi,g.lo,binW)}"/>`;
       }
+      svg+=`</g>`;
       svg+=`<path class="timing-wave-answer" id="ans-${name}" d="${timingPath(draw[name],left,g.hi,g.lo,binW)}"/>`;
       svg+=`<path class="timing-hover-preview" id="prev-${name}" d=""/>`;
       svg+=`<circle class="timing-hover-dot" id="dot-${name}" cx="0" cy="0" r="4" style="display:none"/>`;
@@ -593,7 +601,14 @@ function renderTimingDiagram(){
       const edge=(frac<EDGE_ZONE || frac>1-EDGE_ZONE) && arr[bin]!=null;
       return {bin,val,edge};
     };
-    const refresh=()=>ans.setAttribute("d",timingPath(arr,left,g.hi,g.lo,binW));
+    const refresh=()=>{
+      ans.setAttribute("d",timingPath(arr,left,g.hi,g.lo,binW));
+      // Clear every row's "expected" hint, not just this one's — editing any
+      // row means the previous submission is stale, so none of its feedback
+      // should still be showing, not just the row the student happened to
+      // touch first.
+      TDRAWABLE.forEach(o=>{ const e=document.getElementById("exp-"+o); if(e) e.innerHTML=""; });
+    };
     const showPrev=l=>{
       if(timing.dragging) return;
       if(l.edge){
@@ -660,7 +675,7 @@ function timingCheck(){
       ["Vx","Vy"].forEach(k=>{ const v=timing.tbl[ri].V[k]; if(v===null) missing++; else if(v!==row[k]) wrong++; });
     });
     if(missing) msgs.push({s:"info",tag:"Note",t:`Set the remaining ${missing} node-voltage cell${missing===1?"":"s"} before submitting.`});
-    if(wrong){ msgs.push({s:"warn",tag:"Nudge",t:`${wrong} cell${wrong===1?" doesn't":"s don't"} match the circuit — the mismatches are outlined in red.`}); timing.verdict=true; }
+    if(wrong){ msgs.push({s:"warn",tag:"Nudge",t:`${wrong} cell${wrong===1?" doesn't":"s don't"} match the circuit; the mismatches are outlined in red.`}); timing.verdict=true; }
     correct = !wrong && !missing;
   } else {
     const draw=timing.draw[s.key], expected=timing.expected[s.key];
@@ -677,7 +692,7 @@ function timingCheck(){
     timing.verdict=false;
     timing.completed.add(timing.stage);
     if(timing.completed.size===TSTAGES.length){
-      msgs.push({s:"success",tag:"Correct",t:"Correct — and that was the final stage. You've worked through the whole circuit."});
+      msgs.push({s:"success",tag:"Correct",t:"Correct, and that was the final stage. You've worked through the whole circuit."});
     } else {
       msgs.push({s:"success",tag:"Correct",t:`Correct. Use <b>Next stage</b> to continue.`});
     }

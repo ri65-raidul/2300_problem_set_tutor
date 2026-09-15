@@ -357,7 +357,7 @@ function swCheck(){
     if(sw.completed.size===sw.rows.length){
       msgs.push({
         s:"success",
-        t:"Correct — and that was the last combination. You've solved the whole circuit."
+        t:"Correct, and that was the last combination. You've solved the whole circuit."
       });
     } else {
       msgs.push({

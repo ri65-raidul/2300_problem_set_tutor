@@ -239,11 +239,18 @@ function glyph(cx, cy, t, name){
 }
 
 /* A compact schematic symbol for the palette buttons — same glyph as the
-   diagram, so the palette matches the standard exactly. */
-function paletteSymbolSvg(kind){
-  const w=64,h=48,cx=40,cy=24;
+   diagram, so the palette matches the standard exactly. Labeling it with the
+   currently-armed gate signal (rather than leaving the gate lead blank) shows
+   the student live which signal a newly-dragged transistor will be wired to,
+   since that's set by whichever Gate segment is selected, not by the drag. */
+function paletteSymbolSvg(kind,gateLabel){
+  // 32 units wider than the glyph itself needs, and cx shifted right by half
+  // of that, so there's room on the left for the gate-signal label (glyph()
+  // draws it text-anchor="end" ending just left of the gate lead) without it
+  // clipping against the SVG's edge.
+  const w=96,h=48,cx=56,cy=24;
   return `<svg class="palette-glyph" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">`+
-    glyph(cx,cy,{kind,gate:""},"")+
+    glyph(cx,cy,{kind,gate:gateLabel||""},"")+
   `</svg>`;
 }
 
@@ -312,29 +319,28 @@ function renderCmosToolbar(){
     const on = activeKind===kind ? " on" : "";
     const armed = cmos.armed===kind ? " armed" : "";
     return `<div class="palette-part${on}${armed}" data-part="${kind}" style="touch-action:none;" title="Drag onto the sheet, or click then click a spot to place">
-        ${paletteSymbolSvg(kind)}
+        ${paletteSymbolSvg(kind,activeGate)}
         <span class="palette-label">${label}</span>
       </div>`;
   };
 
   let status;
-  if(d) status=`Editing <b>${d.name}</b> — tap PMOS / NMOS to change its type, drag it to move, Delete to remove.`;
-  else if(cmos.armed) status=`Placing a <b>${cmos.armed==="pmos"?"PMOS":"NMOS"}</b> — click a spot on the sheet to drop it.`;
+  if(d) status=`Editing <b>${d.name}</b>: tap PMOS / NMOS to change its type, drag it to move, Delete to remove.`;
+  else if(cmos.armed) status=`Placing a <b>${cmos.armed==="pmos"?"PMOS":"NMOS"}</b>: click a spot on the sheet to drop it.`;
   else status=`No transistor selected.`;
 
   host.innerHTML=`
     <div class="tool-group">
-      <span class="tg-label">Transistor</span>
+      <span class="tg-label">Gate<span class="cmos-help" tabindex="0">?<span class="cmos-help-tip" role="tooltip">Select your signal here. The PMOS/NMOS icons below update to show it on their gate lead.</span></span></span>
+      ${seg(p.inputs.map(g=>({key:"gate",val:g,label:g})),activeGate)}
+    </div>
+
+    <div class="tool-group">
+      <span class="tg-label">Transistor<span class="cmos-help" tabindex="0">?<span class="cmos-help-tip" role="tooltip">The transistors below are draggable to the diagram. You can also click on the transistor below and click on the diagram instead.</span></span></span>
       <div class="schem-palette">
         ${part("pmos","PMOS")}
         ${part("nmos","NMOS")}
       </div>
-    </div>
-
-    <div class="tool-group">
-      <span class="tg-label">Gate</span>
-      <div class="schem-tip">Select your signal before dragging a transistor.</div>
-      ${seg(p.inputs.map(g=>({key:"gate",val:g,label:g})),activeGate)}
     </div>
 
     <div class="schem-actions">
@@ -1340,7 +1346,7 @@ function cmosCheck(){
     msgs.push({
       s:"error",
       area:"diagram",
-      t:`Both networks conduct at (${inStr(short)}) — that shorts VDD to ground. Recheck your wiring.`
+      t:`Both networks conduct at (${inStr(short)}); that shorts VDD to ground. Recheck your wiring.`
     });
   }
 
@@ -1348,7 +1354,7 @@ function cmosCheck(){
     msgs.push({
       s:"error",
       area:"diagram",
-      t:`Neither network conducts at (${inStr(float)}) — V\u1d67 floats. Every input combination must connect V\u1d67 to either VDD or ground.`
+      t:`Neither network conducts at (${inStr(float)}); V\u1d67 floats. Every input combination must connect V\u1d67 to either VDD or ground.`
     });
   }
 
@@ -1608,8 +1614,8 @@ function cmosCheckBuild(){
   let short=null, flt=null, complement=true;
   rows.forEach(a=>{ const s=simRow(p,a); if(s.vy==="SHORT"&&!short)short=a; if(s.vy==="FLOAT"&&!flt)flt=a; if(s.up===s.dn)complement=false; });
   const inStr=a=>p.inputs.map(g=>`${g}=${fmtV(a[g])}`).join(", ");
-  if(short) msgs.push({s:"error",t:`Both networks conduct at (${inStr(short)}) — that shorts VDD to ground. Recheck your wiring.`});
-  if(flt) msgs.push({s:"error",t:`Neither network conducts at (${inStr(flt)}) — V\u1d67 floats. Every input combination must connect V\u1d67 to VDD or ground.`});
+  if(short) msgs.push({s:"error",t:`Both networks conduct at (${inStr(short)}); that shorts VDD to ground. Recheck your wiring.`});
+  if(flt) msgs.push({s:"error",t:`Neither network conducts at (${inStr(flt)}); V\u1d67 floats. Every input combination must connect V\u1d67 to VDD or ground.`});
 
   const usage={}; P.forEach(o=>usage[o.t.gate]=(usage[o.t.gate]||0)+1);
   const missing=p.inputs.filter(g=>!usage[g]);
@@ -1693,7 +1699,7 @@ function cmosCheckTable(){
   } else {
     msgs.push({
       s:"warn",
-      t:"Some cells don't match your circuit yet — the mismatches are outlined in red in the table above.",
+      t:"Some cells don't match your circuit yet; the mismatches are outlined in red in the table above.",
       extra:`<div><span class="fb-count bad">${wrong} cell${wrong===1?"":"s"} to fix</span></div>`
     });
   }

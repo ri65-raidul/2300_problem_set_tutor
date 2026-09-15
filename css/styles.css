@@ -505,12 +505,31 @@
     flex-wrap:wrap;
   }
 
-  .schem-tip{
-    width:100%;
-    font-size:12px;
-    line-height:1.45;
-    color:var(--muted);
+  /* "?" badge next to the Gate label revealing its instructions on hover/focus
+     instead of a permanent line of text — own implementation of the pattern
+     js/glnet.js's GL_HELP()/.gl-help-tip uses, per the no-cross-module-sharing
+     rule (see CLAUDE.md's "Writing user-facing text" section). */
+  .cmos-help{
+    position:relative; display:inline-flex; align-items:center; justify-content:center;
+    width:14px; height:14px; margin-left:5px; vertical-align:middle;
+    border:1px solid var(--line); border-radius:50%;
+    font-size:10px; font-weight:700; text-transform:none; letter-spacing:normal;
+    color:var(--muted); cursor:help;
   }
+  .cmos-help:hover,.cmos-help:focus-visible{border-color:var(--focus); color:var(--focus); outline:none;}
+  .cmos-help-tip{
+    position:absolute; z-index:6; left:0; top:calc(100% + 8px);
+    width:240px; max-width:70vw;
+    background:var(--surface); color:var(--ink-soft);
+    border:1px solid var(--line); border-radius:8px;
+    box-shadow:0 8px 20px rgba(15,23,42,.12);
+    padding:10px 12px;
+    font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:400;
+    text-transform:none; letter-spacing:normal; line-height:1.6; text-align:left;
+    opacity:0; transform:translateY(-4px); pointer-events:none;
+    transition:opacity .12s ease, transform .12s ease;
+  }
+  .cmos-help:hover .cmos-help-tip,.cmos-help:focus-visible .cmos-help-tip{opacity:1; transform:translateY(0);}
 
   .schem-status{
     width:100%;
@@ -639,7 +658,7 @@
   .seg{display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden;}
   .seg button{font:inherit; font-size:13px; font-family:"IBM Plex Mono",monospace; padding:7px 12px; background:var(--surface); border:none; border-right:1px solid var(--line); cursor:pointer; color:var(--ink-soft);}
   .seg button:last-child{border-right:none;}
-  .seg button.on{background:var(--ink); color:#fff;}
+  .seg button.on{background:#eef3ff; color:var(--ink); font-weight:600;}
   .seg button.erase.on{background:var(--err); color:#fff;}
 
   .cmos-canvas{display:flex; justify-content:center; padding:8px 0;}
@@ -1127,12 +1146,14 @@
   /* ---- timing diagram ---- */
   .timing-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;}
   .timing-inline-feedback{margin-top:14px;}
-  .timing-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line-soft);}
-  .timing-toolbar .tg-label{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);}
   .timing-mode{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
   .timing-mode button{border:0;border-right:1px solid var(--line);background:var(--surface);color:var(--ink-soft);font-family:"IBM Plex Mono",monospace;font-size:12px;padding:7px 11px;cursor:pointer;}
   .timing-mode button:last-child{border-right:0}.timing-mode button.on{background:var(--ink);color:#fff;}
-  .timing-svg{display:block;width:100%;height:auto;touch-action:none;}
+  /* Capped at its natural size and centered, rather than always stretching
+     width:100% to fill a (possibly much wider) card — TN is fixed here, not
+     duration-driven like js/glnet.js's diagram, so there's no need for it to
+     ever exceed this size. */
+  .timing-svg{display:block;width:100%;max-width:760px;height:auto;margin:0 auto;touch-action:none;}
   /* Circuit + its reference truth table side by side. The table takes its
      own compact natural width and the circuit flexes to fill the rest. */
   .timing-circuit-row{display:flex;gap:20px;align-items:flex-start;}
@@ -1643,9 +1664,32 @@
     border-top:1px solid var(--line-soft);
   }
 
-  .timing-draw-hint{
-    font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--muted);
+  /* "?" badge next to the "Timing diagram" section label revealing its
+     drawing/erasing instructions on hover/focus, instead of a permanent line
+     of text — own implementation of the pattern used by js/cmos.js's
+     .cmos-help and js/glnet.js's GL_HELP()/.gl-help-tip, per the
+     no-cross-module-sharing rule. */
+  .timing-help{
+    position:relative; display:inline-flex; align-items:center; justify-content:center;
+    width:14px; height:14px; margin-left:5px; vertical-align:middle;
+    border:1px solid var(--line); border-radius:50%;
+    font-size:10px; font-weight:700; text-transform:none; letter-spacing:normal;
+    color:var(--muted); cursor:help;
   }
+  .timing-help:hover,.timing-help:focus-visible{border-color:var(--focus); color:var(--focus); outline:none;}
+  .timing-help-tip{
+    position:absolute; z-index:6; left:0; top:calc(100% + 8px);
+    width:260px; max-width:70vw;
+    background:var(--surface); color:var(--ink-soft);
+    border:1px solid var(--line); border-radius:8px;
+    box-shadow:0 8px 20px rgba(15,23,42,.12);
+    padding:10px 12px;
+    font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:400;
+    text-transform:none; letter-spacing:normal; line-height:1.6; text-align:left;
+    opacity:0; transform:translateY(-4px); pointer-events:none;
+    transition:opacity .12s ease, transform .12s ease;
+  }
+  .timing-help:hover .timing-help-tip,.timing-help:focus-visible .timing-help-tip{opacity:1; transform:translateY(0);}
 
   /* Positive UI: the whole card reads "correct" for a solved stage. */
   .timing-card{transition:border-color .18s ease, box-shadow .18s ease;}

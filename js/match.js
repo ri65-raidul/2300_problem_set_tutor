@@ -86,7 +86,7 @@ function matchRenderHint(){
   const hint=document.getElementById("match-hint");
   if(!hint) return;
   hint.textContent = matchState.armed
-    ? `${MATCH_GATES[matchState.armed].name} is selected — tap a truth table below to place it.`
+    ? `${MATCH_GATES[matchState.armed].name} is selected. Tap a truth table below to place it.`
     : "Tap a gate below, then tap the truth table you think it belongs to.";
 }
 

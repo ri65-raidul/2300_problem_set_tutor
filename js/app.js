@@ -77,11 +77,36 @@ function renderChapters(){
   }
 }
 
+/* Previous/next links between sibling topics, mirroring renderSolverPager
+   below — only topics a student can actually open (visible, with problems)
+   count as siblings, so a hidden or "coming soon" topic is never a target. */
+function navigableChapters(){ return CHAPTERS.filter(c=>!c.hidden && problemsIn(c.number).length); }
+function renderChapterPager(c){
+  const host=document.getElementById("chapter-pager");
+  if(!host) return;
+  const siblings=navigableChapters();
+  const i=siblings.findIndex(x=>x.number===c.number);
+  const prevC = i>0 ? siblings[i-1] : null;
+  const nextC = i<siblings.length-1 ? siblings[i+1] : null;
+
+  const side=(target,dir)=>{
+    if(!target) return `<span class="pager-link disabled">${dir==="prev"?"← Previous topic":"Next topic →"}</span>`;
+    const label=dir==="prev" ? `← Topic ${target.number}: ${target.title}` : `Topic ${target.number}: ${target.title} →`;
+    return `<button type="button" class="pager-link" data-n="${target.number}">${label}</button>`;
+  };
+
+  host.innerHTML=side(prevC,"prev")+side(nextC,"next");
+  host.querySelectorAll(".pager-link[data-n]").forEach(btn=>{
+    btn.onclick=()=>openChapter(+btn.dataset.n);
+  });
+}
+
 /* ---- problem list view ---- */
 function buildProblems(n){
   state.chapterNumber=n;
   const c=chapterOf(n);
   document.getElementById("crumb-chapter").textContent=`Topic ${c.number}`;
+  renderChapterPager(c);
   document.getElementById("prob-eyebrow").textContent=`Topic ${c.number}`;
   document.getElementById("prob-title").textContent=c.title;
   document.getElementById("prob-desc").textContent=c.description;

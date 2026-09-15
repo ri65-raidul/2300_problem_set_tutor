@@ -101,16 +101,16 @@ function evaluate(problem, groups){
   const cellsOf = g => [...g.cells];
 
   if(groups.length===0){
-    return [{s:"info", t:"Nothing grouped yet. Select cells and press Add group — every 1 must end up inside a valid group."}];
+    return [{s:"info", t:"Nothing grouped yet. Select cells and press Add group. Every 1 must end up inside a valid group."}];
   }
 
   // structural, per group
   groups.forEach((g,i)=>{
     const cells=cellsOf(g), n=cells.length;
     if((n & (n-1))!==0){
-      msgs.push({s:"error", t:`Group ${i+1} has ${n} cells. A group must be a power of two — 1, 2, 4, 8 or 16.`});
+      msgs.push({s:"error", t:`Group ${i+1} has ${n} cells. A group must be a power of two: 1, 2, 4, 8 or 16.`});
     } else if(!isValidGroup(cells)){
-      msgs.push({s:"error", t:`Group ${i+1} isn't a valid rectangle. The cells must line up in a block — and remember the map wraps around its edges.`});
+      msgs.push({s:"error", t:`Group ${i+1} isn't a valid rectangle. The cells must line up in a block, and remember the map wraps around its edges.`});
     }
     const zeros=cells.filter(m=>!coverable.has(m));
     if(zeros.length){
@@ -134,9 +134,9 @@ function evaluate(problem, groups){
       const otherOnes=new Set();
       groups.forEach((h,j)=>{ if(j!==i) h.cells.forEach(m=>{ if(mins.has(m)) otherOnes.add(m); }); });
       if(gOnes.length===0){
-        msgs.push({s:"warn", t:`Group ${i+1} covers only don't-cares and no required 1 — it isn't doing any work. Remove it.`});
+        msgs.push({s:"warn", t:`Group ${i+1} covers only don't-cares and no required 1, so it isn't doing any work. Remove it.`});
       } else if(gOnes.every(m=>otherOnes.has(m))){
-        msgs.push({s:"warn", t:`Group ${i+1} is redundant — every 1 in it is already covered by another group. You can remove it.`});
+        msgs.push({s:"warn", t:`Group ${i+1} is redundant: every 1 in it is already covered by another group. You can remove it.`});
       }
     });
     groups.forEach((g,i)=>{
@@ -153,10 +153,10 @@ function evaluate(problem, groups){
     const opt=optimalGroupCount(problem);
     const clean = !msgs.some(m=>m.s==="warn");
     if(clean && groups.length===opt){
-      return [{s:"success", t:`Correct and fully simplified — ${opt} group${opt===1?"":"s"}.  F = ${expression(groups)}`}];
+      return [{s:"success", t:`Correct and fully simplified: ${opt} group${opt===1?"":"s"}.  F = ${expression(groups)}`}];
     }
     if(groups.length>opt){
-      msgs.push({s:"info", t:`All 1s are covered legally, but it isn't minimal. The simplest cover uses ${opt} group${opt===1?"":"s"} — grow your groups or drop any that aren't needed.`});
+      msgs.push({s:"info", t:`All 1s are covered legally, but it isn't minimal. The simplest cover uses ${opt} group${opt===1?"":"s"}: grow your groups or drop any that aren't needed.`});
     } else {
       const nudges=msgs.filter(m=>m.s==="warn").length;
       msgs.push({s:"info", t:`Every 1 is covered with the right number of groups (${opt}). Apply the note${nudges>1?"s":""} above and you'll have the simplest form.`});

@@ -37,17 +37,17 @@ function norPrim(){ return NOR_PRIMITIVES[nor.p.primitive||"NOR"]; }
 const NOR_TARGETS={
   NOT:{ label:"NOT", inputs:["A"], fn:a=>a?0:1,
     hints:{
-      NOR:"Tie both inputs of a single NOR2 to A — NOR(A,A) always equals NOT A.",
-      NAND:"Tie both inputs of a single NAND2 to A — NAND(A,A) always equals NOT A."
+      NOR:"Tie both inputs of a single NOR2 to A. NOR(A,A) always equals NOT A.",
+      NAND:"Tie both inputs of a single NAND2 to A. NAND(A,A) always equals NOT A."
     }},
   AND:{ label:"AND", inputs:["A","B"], fn:(a,b)=>a&b,
     hints:{
       NOR:"By De Morgan's law, NOR(NOT A, NOT B) = A AND B. Build two NOR2 gates as inverters, then feed both outputs into a third NOR2.",
-      NAND:"A NAND2 already computes NOT(A AND B) — invert its output with a second NAND2 wired as an inverter."
+      NAND:"A NAND2 already computes NOT(A AND B). Invert its output with a second NAND2 wired as an inverter."
     }},
   OR:{ label:"OR", inputs:["A","B"], fn:(a,b)=>a|b,
     hints:{
-      NOR:"NOR2 already computes NOT(A OR B) — invert its output with a second NOR2 wired as an inverter.",
+      NOR:"NOR2 already computes NOT(A OR B). Invert its output with a second NOR2 wired as an inverter.",
       NAND:"By De Morgan's law, NAND(NOT A, NOT B) = A OR B. Build two NAND2 gates as inverters, then feed both outputs into a third NAND2."
     }}
 };
@@ -147,7 +147,7 @@ function norRender(){
   document.getElementById("nor-stage-desc").textContent=
     `Drag ${norPrim().label} gates onto the canvas and wire them so the circuit always matches the target truth table on the right.`;
   document.getElementById("nor-target-label").textContent=`Target: ${target.label}`;
-  document.getElementById("nor-palette-label").textContent=`${norPrim().label} — drag onto the canvas`;
+  document.getElementById("nor-palette-label").textContent=`${norPrim().label}: drag onto the canvas`;
   document.getElementById("nor-ref-label").textContent=`${norPrim().label} truth table`;
   document.getElementById("nor-figcap-label").textContent=norPrim().label;
 
@@ -230,9 +230,9 @@ function norRenderCanvasToolbar(){
   const host=document.getElementById("nor-canvas-toolbar");
   const d=norSelectedDevice();
   let status;
-  if(d) status=`Selected <b>${d.name}</b> — drag to move, or delete.`;
-  else if(nor.selected) status=`Selected a wire — delete it, or click away.`;
-  else if(nor.armed) status=`Placing a <b>${norPrim().label}</b> — click the canvas to drop it.`;
+  if(d) status=`Selected <b>${d.name}</b>: drag to move, or delete.`;
+  else if(nor.selected) status=`Selected a wire: delete it, or click away.`;
+  else if(nor.armed) status=`Placing a <b>${norPrim().label}</b>: click the canvas to drop it.`;
   else status=`No item selected.`;
   host.innerHTML=`
     <div class="schem-status"><span>${status}</span></div>
@@ -772,7 +772,7 @@ function norCheck(){
 
   if(incomplete){
     norRenderTargetTable(rows,null);
-    norShowFeedback([{s:"info",t:`The circuit isn't fully wired yet — every input needs an unbroken path through ${norPrim().label} gates to Y.`}]);
+    norShowFeedback([{s:"info",t:`The circuit isn't fully wired yet. Every input needs an unbroken path through ${norPrim().label} gates to Y.`}]);
     return;
   }
 
@@ -782,12 +782,12 @@ function norCheck(){
 
   if(wrong){
     card.classList.remove("is-correct");
-    norShowFeedback([{s:"warn",t:`${wrong} row${wrong===1?"":"s"} of the truth table ${wrong===1?"doesn't":"don't"} match yet — see the highlighted cells. ${norTargetHint(target)}`}]);
+    norShowFeedback([{s:"warn",t:`${wrong} row${wrong===1?"":"s"} of the truth table ${wrong===1?"doesn't":"don't"} match yet. See the highlighted cells. ${norTargetHint(target)}`}]);
   } else {
     card.classList.add("is-correct");
     nor.completed.add(nor.stageIndex);
     norRenderStagebar();
-    norShowFeedback([{s:"success",t:`Correct — this circuit behaves exactly like ${norArticle(target.label)} ${target.label} gate.`}]);
+    norShowFeedback([{s:"success",t:`Correct. This circuit behaves exactly like ${norArticle(target.label)} ${target.label} gate.`}]);
   }
   norRenderActions();
 }

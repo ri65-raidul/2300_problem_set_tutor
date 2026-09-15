@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Problem Sets  — Digital Logic Practice</title>
+<title>Problem Sets: Digital Logic Practice</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -73,6 +73,7 @@
       <span class="sep">/</span>
       <span id="crumb-chapter" class="here"></span>
     </div>
+    <div class="solver-pager" id="chapter-pager"></div>
     <div class="eyebrow" id="prob-eyebrow"></div>
     <h1 class="page" id="prob-title"></h1>
     <p class="lede" id="prob-desc"></p>
@@ -105,7 +106,7 @@
       <div class="kmap-outer">
         <div class="axis-note">Click cells to build a group, then <b>Add group</b>. Groups may overlap.</div>
         <div id="kgrid" class="kgrid"></div>
-        <div class="figcap"><b>Fig. 1</b> — Karnaugh map</div>
+        <div class="figcap"><b>Fig. 1</b>: Karnaugh map</div>
       </div>
       <div class="panel">
         <div class="card">
@@ -180,7 +181,7 @@
           <div class="cmos-reference">
             <div class="cmos-reference-label">Completed circuit</div>
             <div class="cmos-reference-canvas" id="cmos-reference-canvas" aria-label="Completed CMOS circuit"></div>
-            <div class="figcap"><b>Fig. 1</b> — Completed CMOS network</div>
+            <div class="figcap"><b>Fig. 1</b>: Completed CMOS network</div>
           </div>
           <div class="table-note">Mark closed transistors with <b>C</b>, then set V<sub>y</sub>.</div>
           <div id="cmos-table"></div>
@@ -309,7 +310,7 @@
 
         <div class="nor-layout">
           <div class="nor-col nor-col-source">
-            <div class="match-section-label" id="nor-palette-label">NOR2 &mdash; drag onto the canvas</div>
+            <div class="match-section-label" id="nor-palette-label">NOR2: drag onto the canvas</div>
             <div id="nor-palette"></div>
             <div class="match-section-label" id="nor-ref-label">NOR2 truth table</div>
             <div id="nor-ref-table"></div>
@@ -319,7 +320,7 @@
             <div class="match-section-label">Your circuit</div>
             <div class="nor-canvas-toolbar" id="nor-canvas-toolbar"></div>
             <div class="nor-canvas-wrap" id="nor-canvas"></div>
-            <div class="figcap"><b>Fig. 1</b> &mdash; <span id="nor-figcap-label">NOR2</span> circuit</div>
+            <div class="figcap"><b>Fig. 1</b>: <span id="nor-figcap-label">NOR2</span> circuit</div>
           </div>
 
           <div class="nor-col nor-col-target">
@@ -426,6 +427,9 @@
 
           <div class="timing-stagebar" id="timing-stagebar"></div>
 
+          <div class="timing-instruction" id="timing-instruction"></div>
+          <div class="timing-delay-chips" id="timing-delay-chips" style="display:none;"></div>
+
           <div class="timing-circuit-wrap">
             <div class="timing-circuit-row">
               <div class="timing-circuit-col">
@@ -439,21 +443,14 @@
             </div>
           </div>
 
-          <div class="timing-instruction" id="timing-instruction"></div>
-          <div class="timing-delay-chips" id="timing-delay-chips" style="display:none;"></div>
-
           <!-- Stage A: truth table -->
           <div id="timing-table"></div>
 
           <!-- Stages B–E: timing diagram -->
           <div id="timing-diagram-wrap">
-            <div class="timing-toolbar">
-              <button class="btn ghost sm" id="timing-undo" type="button" disabled>Undo</button>
-              <button class="btn ghost sm" id="timing-clear" type="button">Clear drawing</button>
-              <span class="timing-draw-hint">Hover a row to preview, then click or drag to draw. Click or drag near a cell's edge to erase it.</span>
-            </div>
+            <div class="match-section-label">Timing diagram<span class="timing-help" tabindex="0">?<span class="timing-help-tip" role="tooltip">Hover a row to preview, then click or drag to draw. Click or drag near a cell's edge to erase it.</span></span></div>
             <div id="timing-canvas"></div>
-            <div class="figcap"><b>Fig. 1</b> — Timing diagram</div>
+            <div class="figcap"><b>Fig. 1</b>: Timing diagram</div>
           </div>
 
           <div class="timing-actions" id="timing-actions"></div>

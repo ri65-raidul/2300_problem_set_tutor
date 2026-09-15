@@ -465,7 +465,7 @@ const GL_ERASE_CURSOR=`url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.or
 /* Diagram-drawing instructions, tucked behind a hover/focus "?" badge next to
    the "Timing diagram" section label instead of sitting on the page as a
    permanent line of text — see glRefresh()'s use of GL_HELP(). */
-const GL_DIAGRAM_HINT="Hover to preview a cell's <b>flat</b> level (top/mid/bottom third = 1/unknown/0) or, near a gridline, its <b>edge</b>. Click or drag to draw it — or, hovering that same edge on an already-drawn cell, to <b>erase</b> it. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes a stroke.";
+const GL_DIAGRAM_HINT="Hover to preview a cell's <b>flat</b> level (top/mid/bottom third = 1/unknown/0) or, near a gridline, its <b>edge</b>. Click or drag to draw it, or hover that same edge on an already-drawn cell to <b>erase</b> it. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes a stroke.";
 function GL_HELP(tip){
   return `<span class="gl-help" tabindex="0">?<span class="gl-help-tip" role="tooltip">${tip}</span></span>`;
 }
@@ -673,7 +673,7 @@ function glCheck(){
       });
     });
     if(missing) msgs.push({s:"info",t:`Fill in the remaining ${missing} cell${missing===1?"":"s"} before checking.`});
-    else if(wrong) msgs.push({s:"warn",t:`${wrong} cell${wrong===1?" doesn't":"s don't"} match the circuit — the mismatches are outlined in red.`});
+    else if(wrong) msgs.push({s:"warn",t:`${wrong} cell${wrong===1?" doesn't":"s don't"} match the circuit; the mismatches are outlined in red.`});
     correct=!wrong && !missing;
 
   } else if(gl.stage===1){
@@ -697,7 +697,7 @@ function glCheck(){
     });
     if(chainMissing) msgs.push({s:"info",t:`Figure out the gate sequence for ${chainMissing} more path${chainMissing===1?"":"s"} first.`});
     else if(missing) msgs.push({s:"info",t:`Fill in the propagation and contamination delay for ${missing} more path${missing===1?"":"s"}.`});
-    else if(chainWrong) msgs.push({s:"warn",t:`${chainWrong} path${chainWrong===1?"":"s"} ${chainWrong===1?"doesn't":"don't"} list the right gate sequence yet — trace each input through the diagram to ${gl.net.output}.`});
+    else if(chainWrong) msgs.push({s:"warn",t:`${chainWrong} path${chainWrong===1?"":"s"} ${chainWrong===1?"doesn't":"don't"} list the right gate sequence yet. Trace each input through the diagram to ${gl.net.output}.`});
     else if(wrong) msgs.push({s:"warn",t:`${wrong} value${wrong===1?" doesn't":"s don't"} match yet. See the highlighted cells. Propagation delay sums every t<sub>pd</sub> along the path; contamination delay sums every t<sub>cd</sub>; the critical path has the largest propagation delay, the short path the smallest contamination delay.`});
     correct=!wrong && !missing && !chainMissing && !chainWrong;
 
@@ -719,7 +719,7 @@ function glCheck(){
   if(correct){
     gl.completed.add(gl.stage);
     msgs.push({s:"success", t: gl.completed.size===GL_STAGES.length
-      ? "Correct — and that was the final stage. You've worked all the way through the circuit's timing."
+      ? "Correct, and that was the final stage. You've worked all the way through the circuit's timing."
       : "Correct. Use <b>Next stage</b> to continue."});
   } else {
     gl.completed.delete(gl.stage);
