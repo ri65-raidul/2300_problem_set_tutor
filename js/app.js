@@ -24,6 +24,8 @@ const DIFF_LABELS = { easy:"Short", med:"Medium", hard:"Long" };
 function showView(view){
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
   document.getElementById("view-"+view).classList.add("active");
+  const footer=document.getElementById("site-footer");
+  if(footer) footer.style.display = view==="solver" ? "none" : "";
   window.scrollTo({top:0, behavior:"instant" in window ? "instant" : "auto"});
 }
 function routeToHash(route){
@@ -109,7 +111,6 @@ function buildProblems(n){
   renderChapterPager(c);
   document.getElementById("prob-eyebrow").textContent=`Topic ${c.number}`;
   document.getElementById("prob-title").textContent=c.title;
-  document.getElementById("prob-desc").textContent=c.description;
   const host=document.getElementById("plist"); host.innerHTML="";
   problemsIn(n).forEach((p,idx)=>{
     const b=document.createElement("button"); b.className="prow";

@@ -411,7 +411,8 @@
   .msg .mtag{font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.1em; text-transform:uppercase; display:block; margin-bottom:2px; opacity:.75;}
 
   .hint{font-size:12.5px; color:var(--muted); margin-top:10px; line-height:1.45;}
-  footer{margin-top:44px; padding-top:18px; border-top:1px solid var(--line); font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--muted); letter-spacing:.04em;}
+  footer{margin-top:44px; padding:18px 0 28px; border-top:1px solid var(--line); font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--muted); letter-spacing:.04em; display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:9px; text-align:center;}
+  footer .footer-sep{opacity:.4;}
 
   /* ---- CMOS builder ---- */
   .cmos-wrap{display:grid; grid-template-columns:minmax(0,1fr) minmax(460px,520px); gap:26px; align-items:start;}
